@@ -1,0 +1,11 @@
+# Carpetas de compilacion y cache del editor
+build/
+out/
+.vs/
+.vscode/
+
+# Ejecutables y binarios
+*.exe
+*.dll
+*.pdb
+*.ilk
