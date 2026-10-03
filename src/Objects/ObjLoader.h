@@ -1,6 +1,9 @@
 #pragma once
-#include<string.h>
-#include "Mesh.h"
+#include <string>
+#include <vector>
+#include <glm/glm.hpp>
+
+class Mesh;
 
 namespace util {
 	std::vector<float> load_model_from_file(const char* filename, glm::mat4 preTransform);

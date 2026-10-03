@@ -78,8 +78,10 @@ add_executable(proyecto2
 target_link_libraries(proyecto2 glfw3 opengl32)
 
 # Copiar glfw3.dll automaticamente al lado del .exe al compilar
-add_custom_command(TARGET proyecto2 POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_SOURCE_DIR}/lib/glfw3.dll"
-    $<TARGET_FILE_DIR:proyecto2>
-)
+#add_custom_command(TARGET proyecto2 POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#    "${CMAKE_SOURCE_DIR}/lib/glfw3.dll"
+#    $<TARGET_FILE_DIR:proyecto2>
+#)
+
+file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})

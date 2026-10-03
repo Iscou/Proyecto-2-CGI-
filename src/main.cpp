@@ -190,6 +190,14 @@ public:
             objSeleccionado = static_cast<int>(escena.size()) - 1;
             contadorID++;
         }
+        if (ImGui::Button(".obj")) {
+            std::cout << "Escribe la ruta del archivo .obj: ";
+            std::string ruta;
+            std::cin >> ruta;
+            escena.push_back(Mesh::crearOBJ(contadorID, ruta));
+            objSeleccionado = static_cast<int>(escena.size()) - 1;
+            contadorID++;
+        }
         if (ImGui::Button("Borrar Escena Completa")) {
             for (Mesh& m : escena) m.limpiarGPU();
             escena.clear();

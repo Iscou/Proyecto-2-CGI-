@@ -1,6 +1,5 @@
 #pragma once
 #include "SubMesh.h" 
-#include "ObjMesh.h"
 #include <vector>
 #include <string>
 #include <limits>
