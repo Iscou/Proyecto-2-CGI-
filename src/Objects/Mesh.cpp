@@ -187,3 +187,7 @@ Mesh Mesh::crearEsfera(int idObjeto, int idSubMesh, float radio, int sectores, i
     m.construirBBoxGPU();
     return m;
 }
+
+Mesh Mesh::crearOBJ(int idObjeto, const std::string& rutaArchivo) {
+	return ObjLoader::cargarOBJ(idObjeto, rutaArchivo);
+}
