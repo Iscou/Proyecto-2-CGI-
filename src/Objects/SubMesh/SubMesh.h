@@ -49,4 +49,7 @@ public:
 
     // Libera la memoria de la tarjeta grafica al eliminar el objeto
     void limpiarGPU();
+
+    GLuint getVAO() const { return vao; }
+    int getTotalVertices() const { return totalVertices; }
 };

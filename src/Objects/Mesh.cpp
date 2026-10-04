@@ -187,3 +187,46 @@ Mesh Mesh::crearEsfera(int idObjeto, int idSubMesh, float radio, int sectores, i
     m.construirBBoxGPU();
     return m;
 }
+
+// Primitiva del cilindro
+Mesh Mesh::crearCilindro (int idObjeto, int idSubMesh, float radio, float altura, int sectores) {
+    Mesh m(idObjeto, "Cilindro_" + std::to_string(idObjeto));
+
+    std::vector<Triangle> tris;
+    const float PI = 3.14159265359f;
+    
+    float yMin = -altura * 0.5f;
+    float yMax = altura * 0.5f; 
+
+    glm::vec3 centroArriba(0.0f, yMax, 0.0f);
+    glm::vec3 centroAbajo(0.0f, yMin, 0.0f);
+
+    for (int i = 0; i < sectores; ++i) {
+        float u1 = (float)i / sectores * 2.0f * PI;
+        float u2 = (float)(i + 1) / sectores * 2.0f * PI;
+
+        glm::vec3 p1Arriba(radio * cos(u1), yMax, radio * sin(u1));
+        glm::vec3 p2Arriba(radio * cos(u2), yMax, radio * sin(u2));
+        glm::vec3 p1Abajo(radio * cos(u1), yMin, radio * sin(u1));
+        glm::vec3 p2Abajo(radio * cos(u2), yMin, radio * sin(u2));
+
+        // Tapa superior e inferior
+        tris.push_back(Triangle(centroArriba, p1Arriba, p2Arriba, glm::vec3(0,1,0), glm::vec3(0,1,0), glm::vec3(0,1,0)));
+        tris.push_back(Triangle(centroAbajo, p2Abajo, p1Abajo, glm::vec3(0,-1,0), glm::vec3(0,-1,0), glm::vec3(0,-1,0)));
+
+        // Cuerpo lateral (Calculamos sus normales puramente en XZ)
+        glm::vec3 n1 = glm::normalize(glm::vec3(p1Abajo.x, 0.0f, p1Abajo.z));
+        glm::vec3 n2 = glm::normalize(glm::vec3(p2Abajo.x, 0.0f, p2Abajo.z));
+        
+        tris.push_back(Triangle(p1Abajo, p1Arriba, p2Arriba, n1, n1, n2));
+        tris.push_back(Triangle(p1Abajo, p2Arriba, p2Abajo, n1, n2, n2));
+    }
+
+    SubMesh sm(idSubMesh, tris, glm::vec4(0.8f, 0.4f, 0.8f, 1.0f));
+    sm.subirAGPU(); // Pasamos las normales listas
+    m.subMeshes.push_back(sm);
+    m.minBounds = glm::vec3(-radio, yMin, -radio); 
+    m.maxBounds = glm::vec3(radio, yMax, radio);
+    m.construirBBoxGPU();
+    return m;
+}

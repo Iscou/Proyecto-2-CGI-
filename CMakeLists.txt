@@ -1,9 +1,21 @@
 cmake_minimum_required(VERSION 3.14)
-project(PROY2_32111550)
+project(PROY2_32111550_tucedula)
 
 set(CMAKE_CXX_STANDARD 17)
 
 include(FetchContent)
+
+# Descargar GLFW automaticamente
+FetchContent_Declare(
+    glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+)
+# Desactivamos extras de GLFW para que compile super rapido
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(glfw)
 
 # Descargar GLM automaticamente
 FetchContent_Declare(
@@ -57,10 +69,8 @@ include_directories(
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
     ${tinyobjloader_SOURCE_DIR}
+    ${glfw_SOURCE_DIR}/include
 )
-
-# Ruta de la carpeta de lib local 
-link_directories(${CMAKE_SOURCE_DIR}/lib)
 
 # Busca todos los .cpp y .c dentro de src/ y sus subcarpetas
 file(GLOB_RECURSE PROJECT_SOURCES 
@@ -74,12 +84,5 @@ add_executable(proyecto2
     ${IMGUI_SOURCES}
 )
 
-# Enlazar librerias
-target_link_libraries(proyecto2 glfw3 opengl32)
-
-# Copiar glfw3.dll automaticamente al lado del .exe al compilar
-add_custom_command(TARGET proyecto2 POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    "${CMAKE_SOURCE_DIR}/lib/glfw3.dll"
-    $<TARGET_FILE_DIR:proyecto2>
-)
+# Enlazar librerias (ahora usamos 'glfw' que es el target que descarga FetchContent)
+target_link_libraries(proyecto2 glfw opengl32)

@@ -53,4 +53,10 @@ public:
     static Mesh crearCubo(int idObjeto, int idSubMesh, float lado = 1.0f);
     static Mesh crearPiramide(int idObjeto, int idSubMesh, float base = 1.0f, float altura = 1.0f);
     static Mesh crearEsfera(int idObjeto, int idSubMesh, float radio = 0.5f, int sectores = 20, int stacks = 20);
+
+    // Primitiva Cilindro 
+    static Mesh crearCilindro(int idObjeto, int idSubMesh, float radio = 0.5f, float altura = 1.0f, int sectores =  20);
+
+    
+
 };
