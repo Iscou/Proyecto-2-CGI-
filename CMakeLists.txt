@@ -84,5 +84,15 @@ add_executable(proyecto2
     ${IMGUI_SOURCES}
 )
 
+# Descargar nlohmann/json automaticamente
+FetchContent_Declare(
+    json
+    GIT_REPOSITORY https://github.com/nlohmann/json.git
+    GIT_TAG v3.11.3
+)
+FetchContent_MakeAvailable(json)
+
 # Enlazar librerias (ahora usamos 'glfw' que es el target que descarga FetchContent)
-target_link_libraries(proyecto2 glfw opengl32)
+target_link_libraries(proyecto2 glfw opengl32 nlohmann_json::nlohmann_json)
+
+

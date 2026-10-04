@@ -9,3 +9,7 @@ out/
 *.dll
 *.pdb
 *.ilk
+
+# Archivos de guardado de la escena
+Saves/
+*.json

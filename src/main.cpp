@@ -2,6 +2,12 @@
 #include "Camera/camera.h"
 #include "Objects/Mesh.h"
 #include <glm/gtc/type_ptr.hpp>
+#include <filesystem>
+#include <fstream>
+#include <nlohmann/json.hpp>
+
+namespace fs = std::filesystem;
+using json = nlohmann::json;
 
 // Shaders
 const char* vertexShaderSrc = R"(
@@ -100,6 +106,66 @@ private:
     bool cullFaceActivo = false;
 
     int modoSeleccion = 0; // Mod select. 0: Global, 1: Local, 2: Triangulo
+
+    void guardarEscena(const std::string& nombreArchivo) {
+        if (!fs::exists("Saves")) fs::create_directory("Saves"); // Crea la carpeta default
+        
+        json jEscena = json::array();
+        for (const Mesh& m : escena) {
+            json jMesh;
+            jMesh["nombre"] = m.nombre;
+            jMesh["pos"] = {m.position.x, m.position.y, m.position.z};
+            jMesh["rot"] = {m.rotation.x, m.rotation.y, m.rotation.z};
+            jMesh["scl"] = {m.scale.x, m.scale.y, m.scale.z};
+            
+            // Guardamos el color de la primera submalla 
+            if (!m.subMeshes.empty()) {
+                jMesh["color"] = {m.subMeshes[0].color.r, m.subMeshes[0].color.g, m.subMeshes[0].color.b, m.subMeshes[0].color.a};
+            }
+            jEscena.push_back(jMesh);
+        }
+
+        std::ofstream archivo("Saves/" + nombreArchivo + ".json");
+        archivo << jEscena.dump(4); 
+        std::cout << "Escena guardada en Saves/" << nombreArchivo << ".json\n";
+    }
+
+    void cargarEscena(const std::string& rutaCompleta) {
+        std::ifstream archivo(rutaCompleta);
+        if (!archivo.is_open()) return;
+        json jEscena;
+        archivo >> jEscena;
+
+        // Borrar escena actual y limpiar GPU
+        for (Mesh& m : escena) m.limpiarGPU();
+        escena.clear();
+        objSeleccionado = -1;
+        contadorID = 1;
+
+        for (const auto& jMesh : jEscena) {
+            std::string nombreGuardado = jMesh["nombre"];
+            Mesh m;
+            
+            // Reconstruir la figura basandose en el sufijo
+            if (nombreGuardado.find("Cubo") != std::string::npos) m = Mesh::crearCubo(contadorID, contadorID);
+            else if (nombreGuardado.find("Piramide") != std::string::npos) m = Mesh::crearPiramide(contadorID, contadorID);
+            else if (nombreGuardado.find("Esfera") != std::string::npos) m = Mesh::crearEsfera(contadorID, contadorID);
+            else if (nombreGuardado.find("Cilindro") != std::string::npos) m = Mesh::crearCilindro(contadorID, contadorID);
+            // Integrar else para  TinyObjLoader para leer el archivo .obj
+            
+            m.position = glm::vec3(jMesh["pos"][0], jMesh["pos"][1], jMesh["pos"][2]);
+            m.rotation = glm::vec3(jMesh["rot"][0], jMesh["rot"][1], jMesh["rot"][2]);
+            m.scale = glm::vec3(jMesh["scl"][0], jMesh["scl"][1], jMesh["scl"][2]);
+            
+            if (!m.subMeshes.empty() && jMesh.contains("color")) {
+                m.subMeshes[0].color = glm::vec4(jMesh["color"][0], jMesh["color"][1], jMesh["color"][2], jMesh["color"][3]);
+            }
+            
+            escena.push_back(m);
+            contadorID++;
+        }
+        std::cout << "Escena cargada desde " << rutaCompleta << "\n";
+    }
 
     void compilarShaders() {
         GLuint vs = glCreateShader(GL_VERTEX_SHADER);
@@ -467,6 +533,32 @@ void update(float deltaTime) override {
 
             ImGui::End();
         }
+
+        // Cargado y guardado de escena
+        ImGui::Begin("Guardar y Cargar Escena");
+        
+        static char nombreArchivoGuardar[64] = "mi_escena";
+        ImGui::InputText(".json", nombreArchivoGuardar, IM_ARRAYSIZE(nombreArchivoGuardar));
+        ImGui::SameLine();
+        if (ImGui::Button("Guardar Archivo")) {
+            guardarEscena(std::string(nombreArchivoGuardar));
+        }
+        
+        ImGui::Separator();
+        ImGui::Text("Archivos Guardados (Saves/):");
+        
+        // Leer la carpeta nativamente 
+        if (fs::exists("Saves")) {
+            for (const auto& entry : fs::directory_iterator("Saves")) {
+                if (entry.path().extension() == ".json") {
+                    std::string nombreArchivo = entry.path().filename().string();
+                    if (ImGui::Button(("Cargar " + nombreArchivo).c_str())) {
+                        cargarEscena(entry.path().string());
+                    }
+                }
+            }
+        }
+        ImGui::End();
     }
 };
 
