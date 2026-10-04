@@ -204,7 +204,8 @@ public:
             std::cout << "Escribe la ruta del archivo .obj: ";
             std::string ruta;
             std::cin >> ruta;
-            std::ifstream file(ruta);
+            std::string rutaCompleta = "assets/models/" + ruta + ".obj";
+            std::ifstream file(rutaCompleta);
 
             if (file.is_open()) {
                 escena.push_back(Mesh::crearOBJ(contadorID, ruta));
@@ -214,7 +215,6 @@ public:
             else {
                 std::cerr << "Error: No se puede abrir el archivo .obj: " << ruta << std::endl;
             }
-            
         }
         if (ImGui::Button("Borrar Escena Completa")) {
             for (Mesh& m : escena) m.limpiarGPU();
