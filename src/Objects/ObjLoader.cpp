@@ -62,23 +62,23 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
     std::vector<tinyobj::shape_t> shapes;
     std::vector<tinyobj::material_t> materials;
     std::string warn, err;
-    std::string rutaCompleta = "assets/models/" + rutaArchivo + ".obj";
+    std::string nombreArch = rutaArchivo.substr(14, rutaArchivo.size() - 18);
 
     // Extraer el directorio base del archivo para buscar el .mtl
     std::string baseDir = "";
-    size_t lastSlash = rutaCompleta.find_last_of("/\\");
+    size_t lastSlash = rutaArchivo.find_last_of("/\\");
     if (lastSlash != std::string::npos) {
-        baseDir = rutaCompleta.substr(0, lastSlash + 1);
+        baseDir = rutaArchivo.substr(0, lastSlash + 1);
     }
 
     // Intentar cargar el archivo .obj
-    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, rutaCompleta.c_str(), baseDir.c_str());
+    bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, rutaArchivo.c_str(), baseDir.c_str());
 
     if (!warn.empty()) std::cout << "OBJ Loader Warning: " << warn << std::endl;
     if (!err.empty())  std::cerr << "OBJ Loader Error: " << err << std::endl;
     if (!ret) return Mesh(idObjeto, "Error_Carga");
 
-	Mesh m(idObjeto, rutaArchivo + ".OBJ_" + std::to_string(idObjeto));
+	Mesh m(idObjeto, nombreArch + ".OBJ_" + std::to_string(idObjeto));
 
     // Inicializar Bounding Box extrema
     m.minBounds = glm::vec3(std::numeric_limits<float>::max());

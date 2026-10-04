@@ -208,12 +208,12 @@ public:
             std::ifstream file(rutaCompleta);
 
             if (file.is_open()) {
-                escena.push_back(Mesh::crearOBJ(contadorID, ruta));
+                escena.push_back(Mesh::crearOBJ(contadorID, rutaCompleta));
                 objSeleccionado = static_cast<int>(escena.size()) - 1;
                 contadorID++;
             }
             else {
-                std::cerr << "Error: No se puede abrir el archivo .obj: " << ruta << std::endl;
+                std::cerr << "Error: No se puede abrir el archivo .obj: " << rutaCompleta << std::endl;
             }
         }
         if (ImGui::Button("Borrar Escena Completa")) {
@@ -234,7 +234,14 @@ public:
             ImGui::DragFloat3("Escala", glm::value_ptr(actual.scale), 0.05f, 0.05f, 10.0f);
 
             if (!actual.subMeshes.empty()) {
-                ImGui::ColorEdit4("Color Difuso (kd)", glm::value_ptr(actual.subMeshes[0].color));
+                for (size_t i = 0; i < actual.subMeshes.size(); ++i) {
+                    ImGui::PushID(static_cast<int>(i)); // Empuja el índice actual al stack de IDs de ImGui
+
+                    std::string etiqueta = "SubMesh " + std::to_string(i) + " Color";
+                    ImGui::ColorEdit4(etiqueta.c_str(), glm::value_ptr(actual.subMeshes[i].color));
+
+                    ImGui::PopID(); // Restaura el stack de IDs
+                }
             }
 
             ImGui::Checkbox("Modo Wireframe", &actual.wireframe);
