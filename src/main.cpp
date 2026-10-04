@@ -190,7 +190,7 @@ public:
             objSeleccionado = static_cast<int>(escena.size()) - 1;
             contadorID++;
         }
-        if (ImGui::Button(".obj")) {
+        if (ImGui::Button(".OBJ")) {
             std::cout << "Escribe la ruta del archivo .obj: ";
             std::string ruta;
             std::cin >> ruta;

@@ -138,6 +138,26 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
                     else {
                         norm[v] = glm::vec3(0.0f, 1.0f, 0.0f); // Normal por defecto
                     }
+
+                    glm::vec4 colorSubMesh(0.7f, 0.7f, 0.7f, 1.0f); // gris y 100% opaco
+
+                    if (!shape.mesh.material_ids.empty()) {
+                        int matId = shape.mesh.material_ids[0];
+                        if (matId >= 0 && matId < static_cast<int>(materials.size())) {
+                            const auto& mat = materials[matId];
+
+                            // Asignamos R, G, B desde el Kd y el Alpha desde mat.dissolve (d)
+                            colorSubMesh = glm::vec4(
+                                mat.diffuse[0],
+                                mat.diffuse[1],
+                                mat.diffuse[2],
+                                mat.dissolve 
+                            );
+                        }
+                    }
+
+                    // Se crea la SubMesh pasando el color con Alpha
+                    SubMesh sm(subMeshIdCounter++, tris, colorSubMesh);
                 }
 
                 // Crear el triángulo

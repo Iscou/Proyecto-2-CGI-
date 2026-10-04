@@ -50,9 +50,9 @@ public:
     void limpiarGPU();
 
     // Primitivas parametrizables
-    static Mesh crearCubo(int idObjeto, int idSubMesh, float lado = 1.0f);
-    static Mesh crearPiramide(int idObjeto, int idSubMesh, float base = 1.0f, float altura = 1.0f);
-    static Mesh crearEsfera(int idObjeto, int idSubMesh, float radio = 0.5f, int sectores = 20, int stacks = 20);
+    static Mesh crearCubo(int idObjeto, int idSubMesh, float lado = 1.0f, float alpha = 1.0f);
+    static Mesh crearPiramide(int idObjeto, int idSubMesh, float base = 1.0f, float altura = 1.0f, float alpha = 1.0f);
+    static Mesh crearEsfera(int idObjeto, int idSubMesh, float radio = 0.5f, int sectores = 20, int stacks = 20, float alpha = 1.0f);
 
     // Objetos TinyObjLoader
     static Mesh crearOBJ(int idObjeto, const std::string& rutaArchivo);
