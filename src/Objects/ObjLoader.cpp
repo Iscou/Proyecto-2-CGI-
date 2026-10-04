@@ -4,6 +4,7 @@
 #include "tiny_obj_loader.h"
 #include <iostream>
 #include <limits>
+#include <optional>
 
 std::vector<float> util::load_model_from_file(const char* filename, glm::mat4 preTransform) {
 
@@ -156,8 +157,6 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
                         }
                     }
 
-                    // Se crea la SubMesh pasando el color con Alpha
-                    SubMesh sm(subMeshIdCounter++, tris, colorSubMesh);
                 }
 
                 // Crear el triángulo

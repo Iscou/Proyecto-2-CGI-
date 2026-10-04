@@ -2,6 +2,7 @@
 #include "Camera/camera.h"
 #include "Objects/Mesh.h"
 #include <glm/gtc/type_ptr.hpp>
+#include <fstream>
 
 // Shaders
 const char* vertexShaderSrc = R"(
@@ -203,9 +204,17 @@ public:
             std::cout << "Escribe la ruta del archivo .obj: ";
             std::string ruta;
             std::cin >> ruta;
-            escena.push_back(Mesh::crearOBJ(contadorID, ruta));
-            objSeleccionado = static_cast<int>(escena.size()) - 1;
-            contadorID++;
+            std::ifstream file(ruta);
+
+            if (file.is_open()) {
+                escena.push_back(Mesh::crearOBJ(contadorID, ruta));
+                objSeleccionado = static_cast<int>(escena.size()) - 1;
+                contadorID++;
+            }
+            else {
+                std::cerr << "Error: No se puede abrir el archivo .obj: " << ruta << std::endl;
+            }
+            
         }
         if (ImGui::Button("Borrar Escena Completa")) {
             for (Mesh& m : escena) m.limpiarGPU();
