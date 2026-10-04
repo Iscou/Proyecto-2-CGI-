@@ -46,6 +46,7 @@ public:
     glm::mat4 getMatrizGlobal() const;
     void normalizarYCalcularBBox();
     void construirBBoxGPU();
+	bool esTrasparente() const;
     void dibujar(GLuint shaderProgram) const;
     void limpiarGPU();
 

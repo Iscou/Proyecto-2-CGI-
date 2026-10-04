@@ -155,9 +155,18 @@ public:
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(proj));
 
-        // Dibujar todos los objetos de la escena
+        // Renderizar solo mallas opacas
         for (const Mesh& m : escena) {
-            m.dibujar(shaderProgram);
+            if (!m.esTrasparente()) {
+                m.dibujar(shaderProgram);
+            }
+        }
+
+		// Renderizar solo mallas transparentes
+        for (const Mesh& m : escena) {
+            if (m.esTrasparente()) {
+                m.dibujar(shaderProgram);
+            }
         }
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

@@ -135,7 +135,7 @@ Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, float lado, float alpha) {
     };
 
     // Pasamos el canal Alpha al glm::vec4 de la SubMesh
-    glm::vec4 colorBase = glm::vec4(0.9f, 0.3f, 0.3f, alpha);
+    glm::vec4 colorBase = glm::vec4(0.2f, 0.6f, 0.9f, alpha);
     SubMesh sm(idSubMesh, tris, colorBase);
 
     sm.calcularNormalesPromediadas();
@@ -160,7 +160,7 @@ Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, float base, float altura, 
     };
 
     // Pasamos el canal Alpha al glm::vec4 de la SubMesh
-    glm::vec4 colorBase = glm::vec4(0.9f, 0.3f, 0.3f, alpha);
+    glm::vec4 colorBase = glm::vec4(0.9f, 0.7f, 0.2f, alpha);
     SubMesh sm(idSubMesh, tris, colorBase);
 
     sm.calcularNormalesPromediadas();
@@ -203,4 +203,11 @@ Mesh Mesh::crearEsfera(int idObjeto, int idSubMesh, float radio, int sectores, i
 
 Mesh Mesh::crearOBJ(int idObjeto, const std::string& rutaArchivo) {
 	return ObjLoader::cargarOBJ(idObjeto, rutaArchivo);
+}
+
+bool Mesh::esTrasparente() const {
+	for (const SubMesh& sm : subMeshes) {
+		if (sm.color.a < 1.0f) return true;
+	}
+	return false;
 }
