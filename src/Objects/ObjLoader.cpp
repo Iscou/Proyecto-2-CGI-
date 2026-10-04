@@ -78,6 +78,31 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
     if (!err.empty())  std::cerr << "OBJ Loader Error: " << err << std::endl;
     if (!ret) return Mesh(idObjeto, "Error_Carga");
 
+    // Normalizar objetos
+    if (!attrib.vertices.empty()) {
+        glm::vec3 minB(std::numeric_limits<float>::max());
+        glm::vec3 maxB(std::numeric_limits<float>::lowest());
+
+        // Obtener AABB
+        for (size_t i = 0; i < attrib.vertices.size(); i += 3) {
+            glm::vec3 v(attrib.vertices[i], attrib.vertices[i + 1], attrib.vertices[i + 2]);
+            minB = glm::min(minB, v);
+            maxB = glm::max(maxB, v);
+        }
+
+        glm::vec3 center = (minB + maxB) * 0.5f;
+        glm::vec3 size = maxB - minB;
+        float maxDimension = std::max({ size.x, size.y, size.z });
+
+        if (maxDimension > 0.00001f) {
+            for (size_t i = 0; i < attrib.vertices.size(); i += 3) {
+                attrib.vertices[i + 0] = (attrib.vertices[i + 0] - center.x) / maxDimension;
+                attrib.vertices[i + 1] = (attrib.vertices[i + 1] - center.y) / maxDimension;
+                attrib.vertices[i + 2] = (attrib.vertices[i + 2] - center.z) / maxDimension;
+            }
+        }
+    }
+
 	Mesh m(idObjeto, nombreArch + ".OBJ_" + std::to_string(idObjeto));
 
     // Inicializar Bounding Box extrema
@@ -140,6 +165,7 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
                     else {
                         norm[v] = glm::vec3(0.0f, 1.0f, 0.0f); // Normal por defecto
                     }
+                
 
                     glm::vec4 colorSubMesh(0.7f, 0.7f, 0.7f, 1.0f); // gris y 100% opaco
 
