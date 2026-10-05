@@ -235,7 +235,7 @@ Mesh Mesh::crearCilindro (int idObjeto, int idSubMesh, float radio, float altura
         tris.push_back(Triangle(p1Abajo, p2Arriba, p2Abajo, n1, n2, n2));
     }
 
-    SubMesh sm(idSubMesh, tris, glm::vec4(0.8f, 0.4f, 0.8f, 1.0f));
+    SubMesh sm(idSubMesh, tris, glm::vec4(0.8f, 0.4f, 0.8f, alpha));
     sm.subirAGPU(); // Pasamos las normales listas
     m.subMeshes.push_back(sm);
     m.minBounds = glm::vec3(-radio, yMin, -radio); 
