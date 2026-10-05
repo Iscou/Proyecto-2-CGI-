@@ -1,4 +1,5 @@
 #include "Mesh.h"
+#include "ObjLoader.h"
 
 // Constructor 
 Mesh::Mesh(int id, std::string nombre) : id(id), nombre(nombre) {}
@@ -229,4 +230,8 @@ Mesh Mesh::crearCilindro (int idObjeto, int idSubMesh, float radio, float altura
     m.maxBounds = glm::vec3(radio, yMax, radio);
     m.construirBBoxGPU();
     return m;
+}
+
+Mesh Mesh::crearOBJ(int idObjeto, const std::string& rutaArchivo) {
+	return ObjLoader::cargarOBJ(idObjeto, rutaArchivo);
 }

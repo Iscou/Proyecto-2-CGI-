@@ -59,4 +59,6 @@ public:
 
     
 
+    // Objetos TinyObjLoader
+    static Mesh crearOBJ(int idObjeto, const std::string& rutaArchivo);
 };

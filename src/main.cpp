@@ -484,16 +484,23 @@ void update(float deltaTime) override {
             objSeleccionado = static_cast<int>(escena.size()) - 1;
             contadorID++;
         }
+        ImGui::SameLine();
+        if (ImGui::Button(".obj")) {
+            std::cout << "Escribe la ruta del archivo .obj: ";
+            std::string ruta;
+            std::cin >> ruta;
+            escena.push_back(Mesh::crearOBJ(contadorID, ruta));
+            objSeleccionado = static_cast<int>(escena.size()) - 1;
+            contadorID++;
+        }
 
-        ImGui::Dummy(ImVec2(0.0f, 10.0f)); // Espaciado
-        if (ImGui::Button("Borrar Escena Completa", ImVec2(-1, 0))) { // Boton ancho
+        if (ImGui::Button("Borrar Escena Completa", ImVec2(-1, 0))) { 
             for (Mesh& m : escena) m.limpiarGPU();
             escena.clear();
             objSeleccionado = -1;
-        }
-        ImGui::End();
-
-
+        } 
+        
+        ImGui::End(); 
         // Inspector de objetos (Solo visible si hay seleccion)
 
         if (!escena.empty() && objSeleccionado >= 0 && objSeleccionado < static_cast<int>(escena.size())) {
