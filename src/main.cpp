@@ -151,7 +151,12 @@ private:
             else if (nombreGuardado.find("Piramide") != std::string::npos) m = Mesh::crearPiramide(contadorID, contadorID);
             else if (nombreGuardado.find("Esfera") != std::string::npos) m = Mesh::crearEsfera(contadorID, contadorID);
             else if (nombreGuardado.find("Cilindro") != std::string::npos) m = Mesh::crearCilindro(contadorID, contadorID);
-            // Integrar else para  TinyObjLoader para leer el archivo .obj
+            else { 
+                size_t pos = nombreGuardado.find('.');
+                std::string original = std::string(nombreGuardado.substr(0, pos));
+                m = Mesh::crearOBJ(contadorID, "assets/models/" + original + ".obj");
+            }
+            
             
             m.position = glm::vec3(jMesh["pos"][0], jMesh["pos"][1], jMesh["pos"][2]);
             m.rotation = glm::vec3(jMesh["rot"][0], jMesh["rot"][1], jMesh["rot"][2]);
