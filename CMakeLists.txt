@@ -95,7 +95,6 @@ FetchContent_MakeAvailable(json)
 # Enlazar librerias (ahora usamos 'glfw' que es el target que descarga FetchContent)
 target_link_libraries(proyecto2 glfw opengl32 nlohmann_json::nlohmann_json)
 
-
 # Copiar glfw3.dll automaticamente al lado del .exe al compilar
 #add_custom_command(TARGET proyecto2 POST_BUILD
 #    COMMAND ${CMAKE_COMMAND} -E copy_if_different
