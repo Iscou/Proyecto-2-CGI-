@@ -78,6 +78,10 @@ file(GLOB_RECURSE PROJECT_SOURCES
     "${CMAKE_SOURCE_DIR}/src/*.c"
 )
 
+# Copia la carpeta de modelos y texturas al directorio de compilacion
+file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+ 
+
 # Crear el ejecutable
 add_executable(proyecto2
     ${PROJECT_SOURCES}
