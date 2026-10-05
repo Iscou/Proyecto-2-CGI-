@@ -69,6 +69,11 @@ void Engine3D::run() {
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // Habilitar la mezcla de colores
+        glEnable(GL_BLEND);
+        // Establecer la función de mezcla estándar para transparencias Alpha (SrcAlpha, 1 - SrcAlpha)
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
         // Renderizado de la escena 3D
         update(deltaTime);
 

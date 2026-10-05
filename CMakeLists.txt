@@ -78,6 +78,10 @@ file(GLOB_RECURSE PROJECT_SOURCES
     "${CMAKE_SOURCE_DIR}/src/*.c"
 )
 
+# Copia la carpeta de modelos y texturas al directorio de compilacion
+file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+ 
+
 # Crear el ejecutable
 add_executable(proyecto2
     ${PROJECT_SOURCES}
@@ -94,13 +98,3 @@ FetchContent_MakeAvailable(json)
 
 # Enlazar librerias (ahora usamos 'glfw' que es el target que descarga FetchContent)
 target_link_libraries(proyecto2 glfw opengl32 nlohmann_json::nlohmann_json)
-
-
-# Copiar glfw3.dll automaticamente al lado del .exe al compilar
-#add_custom_command(TARGET proyecto2 POST_BUILD
-#    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-#    "${CMAKE_SOURCE_DIR}/lib/glfw3.dll"
-#    $<TARGET_FILE_DIR:proyecto2>
-#)
-
-file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
