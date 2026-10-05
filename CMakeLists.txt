@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.14)
+<<<<<<< HEAD
 project(PROY2_32111550_tucedula)
+=======
+project(PROY2_32111550_31532714)
+>>>>>>> origin/ramaTinyObjLoader
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -96,3 +100,14 @@ FetchContent_MakeAvailable(json)
 target_link_libraries(proyecto2 glfw opengl32 nlohmann_json::nlohmann_json)
 
 
+<<<<<<< HEAD
+=======
+# Copiar glfw3.dll automaticamente al lado del .exe al compilar
+#add_custom_command(TARGET proyecto2 POST_BUILD
+#    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#    "${CMAKE_SOURCE_DIR}/lib/glfw3.dll"
+#    $<TARGET_FILE_DIR:proyecto2>
+#)
+
+file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+>>>>>>> origin/ramaTinyObjLoader
