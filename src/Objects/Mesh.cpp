@@ -118,7 +118,7 @@ void Mesh::limpiarGPU() {
 }
 
 // Primitivas parametrizables
-Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, float lado) {
+Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, float lado, float alpha) {
     Mesh m(idObjeto, "Cubo_" + std::to_string(idObjeto));
     float h = lado * 0.5f;
     glm::vec3 p[8] = {
@@ -133,7 +133,11 @@ Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, float lado) {
         Triangle(p[7], p[6], p[2]), Triangle(p[7], p[2], p[3]), // Arriba
         Triangle(p[0], p[1], p[5]), Triangle(p[0], p[5], p[4])  // Abajo
     };
-    SubMesh sm(idSubMesh, tris, glm::vec4(0.2f, 0.6f, 0.9f, 1.0f));
+
+    // Pasamos el canal Alpha al glm::vec4 de la SubMesh
+    glm::vec4 colorBase = glm::vec4(0.2f, 0.6f, 0.9f, alpha);
+    SubMesh sm(idSubMesh, tris, colorBase);
+
     sm.calcularNormalesPromediadas();
     sm.subirAGPU();
     m.subMeshes.push_back(sm);
@@ -142,7 +146,7 @@ Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, float lado) {
     return m;
 }
 
-Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, float base, float altura) {
+Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, float base, float altura, float alpha) {
     Mesh m(idObjeto, "Piramide_" + std::to_string(idObjeto));
     float h = base * 0.5f;
     float yMin = -altura * 0.5f, yMax = altura * 0.5f;
@@ -154,7 +158,11 @@ Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, float base, float altura) 
         Triangle(b2, b3, punta), Triangle(b3, b0, punta),
         Triangle(b0, b3, b2),    Triangle(b0, b2, b1) // Base cuadrada
     };
-    SubMesh sm(idSubMesh, tris, glm::vec4(0.9f, 0.7f, 0.2f, 1.0f));
+
+    // Pasamos el canal Alpha al glm::vec4 de la SubMesh
+    glm::vec4 colorBase = glm::vec4(0.9f, 0.7f, 0.2f, alpha);
+    SubMesh sm(idSubMesh, tris, colorBase);
+
     sm.calcularNormalesPromediadas();
     sm.subirAGPU();
     m.subMeshes.push_back(sm);
@@ -163,7 +171,7 @@ Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, float base, float altura) 
     return m;
 }
 
-Mesh Mesh::crearEsfera(int idObjeto, int idSubMesh, float radio, int sectores, int stacks) {
+Mesh Mesh::crearEsfera(int idObjeto, int idSubMesh, float radio, int sectores, int stacks, float alpha) {
     Mesh m(idObjeto, "Esfera_" + std::to_string(idObjeto));
     std::vector<Triangle> tris;
     const float PI = 3.14159265359f;
@@ -182,7 +190,11 @@ Mesh Mesh::crearEsfera(int idObjeto, int idSubMesh, float radio, int sectores, i
             tris.push_back(Triangle(p2, p3, p4, glm::normalize(p2), glm::normalize(p3), glm::normalize(p4)));
         }
     }
-    SubMesh sm(idSubMesh, tris, glm::vec4(0.9f, 0.3f, 0.3f, 1.0f));
+
+    // Pasamos el canal Alpha al glm::vec4 de la SubMesh
+    glm::vec4 colorBase = glm::vec4(0.9f, 0.3f, 0.3f, alpha);
+    SubMesh sm(idSubMesh, tris, colorBase);
+
     m.subMeshes.push_back(sm);
     m.minBounds = glm::vec3(-radio); m.maxBounds = glm::vec3(radio);
     m.construirBBoxGPU();
@@ -190,7 +202,7 @@ Mesh Mesh::crearEsfera(int idObjeto, int idSubMesh, float radio, int sectores, i
 }
 
 // Primitiva del cilindro
-Mesh Mesh::crearCilindro (int idObjeto, int idSubMesh, float radio, float altura, int sectores) {
+Mesh Mesh::crearCilindro (int idObjeto, int idSubMesh, float radio, float altura, int sectores, float alpha) {
     Mesh m(idObjeto, "Cilindro_" + std::to_string(idObjeto));
 
     std::vector<Triangle> tris;
@@ -223,7 +235,7 @@ Mesh Mesh::crearCilindro (int idObjeto, int idSubMesh, float radio, float altura
         tris.push_back(Triangle(p1Abajo, p2Arriba, p2Abajo, n1, n2, n2));
     }
 
-    SubMesh sm(idSubMesh, tris, glm::vec4(0.8f, 0.4f, 0.8f, 1.0f));
+    SubMesh sm(idSubMesh, tris, glm::vec4(0.8f, 0.4f, 0.8f, alpha));
     sm.subirAGPU(); // Pasamos las normales listas
     m.subMeshes.push_back(sm);
     m.minBounds = glm::vec3(-radio, yMin, -radio); 
@@ -234,4 +246,11 @@ Mesh Mesh::crearCilindro (int idObjeto, int idSubMesh, float radio, float altura
 
 Mesh Mesh::crearOBJ(int idObjeto, const std::string& rutaArchivo) {
 	return ObjLoader::cargarOBJ(idObjeto, rutaArchivo);
+}
+
+bool Mesh::esTrasparente() const {
+	for (const SubMesh& sm : subMeshes) {
+		if (sm.color.a < 1.0f) return true;
+	}
+	return false;
 }

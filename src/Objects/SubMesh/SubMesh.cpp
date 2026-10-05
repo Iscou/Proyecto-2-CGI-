@@ -140,6 +140,15 @@ void SubMesh::dibujar(GLuint shaderProgram, const glm::mat4& matrizPadre,
                       bool verWireframe, bool verVertices, bool verNormales) const {
     if (vao == 0 || totalVertices == 0) return;
 
+    // Evaluar si la submalla posee transparencia
+    bool transparente = (color.a < 1.0f);
+
+    if (transparente) {
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDepthMask(GL_FALSE); // Evita que la malla transparente bloquee lo que está detrás
+    }
+
     // La transformacion del Objeto Padre afecta a esta SubMalla: M_final = M_padre * M_local
     glm::mat4 modelFinal = matrizPadre * getMatrizLocal();
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelFinal));
@@ -170,6 +179,12 @@ void SubMesh::dibujar(GLuint shaderProgram, const glm::mat4& matrizPadre,
 
     glBindVertexArray(0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+    if (transparente) {
+        glDepthMask(GL_TRUE); // Reactivar la escritura normal en el Z-Buffer
+        glDisable(GL_BLEND);  // Desactivar blending para las mallas posteriores que sean opacas
+    }
+
 }
 
 void SubMesh::limpiarGPU() {

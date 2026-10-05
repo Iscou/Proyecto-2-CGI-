@@ -382,9 +382,18 @@ void update(float deltaTime) override {
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(proj));
 
-        // Dibujar todos los objetos normalmente
+        // Renderizar solo mallas opacas
         for (const Mesh& m : escena) {
-            m.dibujar(shaderProgram);
+            if (!m.esTrasparente()) {
+                m.dibujar(shaderProgram);
+            }
+        }
+
+		// Renderizar solo mallas transparentes
+        for (const Mesh& m : escena) {
+            if (m.esTrasparente()) {
+                m.dibujar(shaderProgram);
+            }
         }
 
         // Marcado visual del triangulo
@@ -485,16 +494,24 @@ void update(float deltaTime) override {
             contadorID++;
         }
         ImGui::SameLine();
-        if (ImGui::Button(".obj")) {
+        if (ImGui::Button(".OBJ")) {
             std::cout << "Escribe la ruta del archivo .obj: ";
             std::string ruta;
             std::cin >> ruta;
-            escena.push_back(Mesh::crearOBJ(contadorID, ruta));
-            objSeleccionado = static_cast<int>(escena.size()) - 1;
-            contadorID++;
+            std::string rutaCompleta = "assets/models/" + ruta + ".obj";
+            std::ifstream file(rutaCompleta);
+            if (file.is_open()) {
+                escena.push_back(Mesh::crearOBJ(contadorID, rutaCompleta));
+                objSeleccionado = static_cast<int>(escena.size()) - 1;
+                contadorID++;
+            }
+            else {
+                std::cerr << "Error: No se puede abrir el archivo .obj: " << rutaCompleta << std::endl;
+            }
         }
-
-        if (ImGui::Button("Borrar Escena Completa", ImVec2(-1, 0))) { 
+        ImGui::Dummy(ImVec2(0.0f, 10.0f)); // Espaciado
+        
+        if (ImGui::Button("Borrar Escena Completa", ImVec2(-1, 0))) {
             for (Mesh& m : escena) m.limpiarGPU();
             escena.clear();
             objSeleccionado = -1;
@@ -518,7 +535,14 @@ void update(float deltaTime) override {
             ImGui::Separator();
             ImGui::Text("Apariencia:");
             if (!actual.subMeshes.empty()) {
-                ImGui::ColorEdit4("Color Difuso (kd)", glm::value_ptr(actual.subMeshes[0].color));
+                for (size_t i = 0; i < actual.subMeshes.size(); ++i) {
+                    ImGui::PushID(static_cast<int>(i)); // Empuja el índice actual al stack de IDs de ImGui
+
+                    std::string etiqueta = "SubMesh " + std::to_string(i) + " Color";
+                    ImGui::ColorEdit4(etiqueta.c_str(), glm::value_ptr(actual.subMeshes[i].color));
+
+                    ImGui::PopID(); // Restaura el stack de IDs
+                }
             }
 
             ImGui::Checkbox("Modo Wireframe", &actual.wireframe);
