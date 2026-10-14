@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include "Skybox/Skybox.h"
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -77,6 +78,29 @@ void main() {
 }
 )";
 
+const char* skyboxVertexShaderSrc = R"(
+#version 330 core
+layout (location = 0) in vec3 aPos;
+out vec3 TexCoords;
+uniform mat4 projection;
+uniform mat4 view;
+void main() {
+    TexCoords = aPos;
+    vec4 pos = projection * view * vec4(aPos, 1.0);
+    gl_Position = pos.xyww;
+}
+)";
+
+const char* skyboxFragmentShaderSrc = R"(
+#version 330 core
+out vec4 FragColor;
+in vec3 TexCoords;
+uniform samplerCube skybox;
+void main() {    
+    FragColor = texture(skybox, TexCoords);
+}
+)";
+
 class Proyecto2 : public Engine3D {
 private:
     Camera camera;
@@ -85,6 +109,20 @@ private:
     GLuint pickingFBO;
     GLuint pickingTexture;
     GLuint pickingDepth;
+
+    // Skybox
+    GLuint skyboxShaderProgram;
+    SkyBox* miCielo = nullptr;
+
+    // Rutas del skybox 
+    std::vector<std::string> carasCielo = {
+        "assets/skybox/right.jpg",
+        "assets/skybox/left.jpg",
+        "assets/skybox/top.jpg",
+        "assets/skybox/bottom.jpg",
+        "assets/skybox/front.jpg",
+        "assets/skybox/back.jpg"
+    };
 
     // Camara 
     bool modoLibre = false;
@@ -203,11 +241,31 @@ private:
         glDeleteShader(fs);
         glDeleteShader(pv);
         glDeleteShader(pf);
+
+        // Compilado para skybox 
+        GLuint sv = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(sv, 1, &skyboxVertexShaderSrc, nullptr);
+        glCompileShader(sv);
+
+        GLuint sf = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(sf, 1, &skyboxFragmentShaderSrc, nullptr);
+        glCompileShader(sf);
+
+        skyboxShaderProgram = glCreateProgram();
+        glAttachShader(skyboxShaderProgram, sv);
+        glAttachShader(skyboxShaderProgram, sf);
+        glLinkProgram(skyboxShaderProgram);
+
+        glDeleteShader(sv);
+        glDeleteShader(sf);
     }
    
 
 public:
     Proyecto2() : Engine3D(1280, 720, "Proyecto #2 - Renderizado y Manipulacion 3D") {}
+    ~Proyecto2() { 
+        delete miCielo;
+    }
 
     void setupFramebuffer() {
         glGenFramebuffers(1, &pickingFBO);
@@ -231,9 +289,15 @@ public:
     void setup() override {
         compilarShaders();
         setupFramebuffer();
+
+        // Instanciar el Skybox y mandarle las texturas a la VRAM
+        miCielo = new SkyBox(999, 999, skyboxShaderProgram);
+        miCielo->cargarCubemap(carasCielo);
+
         escena.push_back(Mesh::crearCubo(contadorID, contadorID));
         contadorID++;
         glEnable(GL_DEPTH_TEST);
+        glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
     }
 
     void onMouseButtonDown(int button, double x, double y) override {
@@ -451,6 +515,10 @@ void update(float deltaTime) override {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             glEnable(GL_DEPTH_TEST);
             glLineWidth(1.0f);
+        }
+
+        if (miCielo != nullptr) {
+            miCielo->dibujar(view, proj);
         }
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

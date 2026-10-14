@@ -77,15 +77,20 @@ file(GLOB_RECURSE PROJECT_SOURCES
     "${CMAKE_SOURCE_DIR}/src/*.cpp"
     "${CMAKE_SOURCE_DIR}/src/*.c"
 )
+  
 
-# Copia la carpeta de modelos y texturas al directorio de compilacion
-file(COPY ${CMAKE_SOURCE_DIR}/assets DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
- 
 
 # Crear el ejecutable
 add_executable(proyecto2
     ${PROJECT_SOURCES}
     ${IMGUI_SOURCES}
+)
+
+# Copia la carpeta assets exactamente al lado del ejecutable (.exe)
+add_custom_command(TARGET proyecto2 POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    "${CMAKE_SOURCE_DIR}/assets"
+    "$<TARGET_FILE_DIR:proyecto2>/assets"
 )
 
 # Descargar nlohmann/json automaticamente
