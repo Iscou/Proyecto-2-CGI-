@@ -8,6 +8,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include "AABB.h"
+
 
 class Mesh {
 private:
@@ -19,6 +21,11 @@ public:
     int id = 0;
     std::string nombre = "Objeto3D";
     std::string rutaArchivo = ""; 
+
+    // Para colisiones 
+    bool esDinamico = false;
+    glm::vec3 velocidad = glm::vec3(0.0f); 
+    bool borrame = false;
 
     // Submallados de la figura
     std::vector<SubMesh> subMeshes;
@@ -60,4 +67,7 @@ public:
 
     // Objetos TinyObjLoader
     static Mesh crearOBJ(int idObjeto, const std::string& rutaArchivo);
+
+    // Metodo para calcular el bouding box actualizado del Mesh
+    AABB obtenerAABBGlobal() const;
 };

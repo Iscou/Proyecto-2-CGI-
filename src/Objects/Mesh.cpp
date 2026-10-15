@@ -254,3 +254,31 @@ bool Mesh::esTrasparente() const {
 	}
 	return false;
 }
+
+// Metodo para calcular el bouding box actualizado del Mesh
+AABB Mesh::obtenerAABBGlobal() const { 
+    // Obtenemos la matriz de transformacion del modelo para aplicarla sobre el BBox
+    glm::mat4 matrizModel = getMatrizGlobal();
+
+    // Definimos los vertices del modelo
+    glm::vec3 vertices[8] = {v1, v2, v3, v4, v5, v6, v7, v8};
+
+    // Asignamos minimos y globales iniciales 
+    glm::vec3 globalMin(1e9f);
+    glm::vec3 globalMax(-1e9f);
+
+    for (int i = 0; i < 8; ++i) {
+        // Proyectamos el véetice al mundo real
+        glm::vec4 posMundo = matrizModel * glm::vec4(vertices[i], 1.0f);
+
+        // Actualizamos los límites absolutos en X, Y, Z
+        globalMin.x = std::min(globalMin.x, posMundo.x);
+        globalMin.y = std::min(globalMin.y, posMundo.y);
+        globalMin.z = std::min(globalMin.z, posMundo.z);
+
+        globalMax.x = std::max(globalMax.x, posMundo.x);
+        globalMax.y = std::max(globalMax.y, posMundo.y);
+        globalMax.z = std::max(globalMax.z, posMundo.z);
+    }
+    return {globalMin, globalMax}; // Retornamos el min y max del BBox
+}

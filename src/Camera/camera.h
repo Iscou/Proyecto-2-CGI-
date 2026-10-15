@@ -2,6 +2,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <algorithm>
+#include "AABB.h"
+
 
 class Camera {
 public:
@@ -54,6 +56,12 @@ public:
         // Evitar que la camara se invierta (Gimbal lock en pitch)
         pitch = std::clamp(pitch, -89.0f, 89.0f);
         updateCameraVectors();
+    }
+
+    AABB obtenerAABB() const {
+        // Ajustar el radio aumenta el ancho y alto del cilindro
+        glm::vec3 radio(0.3f, 0.8f, 0.3f); 
+        return { position - radio, position + radio };
     }
 
 private:

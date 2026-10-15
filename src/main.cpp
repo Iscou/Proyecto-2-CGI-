@@ -6,6 +6,7 @@
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include "Skybox/Skybox.h"
+#include "AABB.h"
 
 namespace fs = std::filesystem;
 using json = nlohmann::json;
@@ -144,6 +145,14 @@ private:
     bool cullFaceActivo = false;
 
     int modoSeleccion = 0; // Mod select. 0: Global, 1: Local, 2: Triangulo
+
+    // Colisiones 
+
+    bool comprobarColision(AABB a, AABB b) {
+        return (a.min.x <= b.max.x && a.max.x >= b.min.x) &&
+            (a.min.y <= b.max.y && a.max.y >= b.min.y) &&
+            (a.min.z <= b.max.z && a.max.z >= b.min.z);
+    }
 
     void guardarEscena(const std::string& nombreArchivo) {
         if (!fs::exists("Saves")) fs::create_directory("Saves"); // Crea la carpeta default
@@ -377,6 +386,8 @@ void update(float deltaTime) override {
             tabPresionado = false;
         }
 
+        // Guardamos el movimiento previo de la camara
+        glm::vec3 posicionAnterior = camera.position;
         // Movimiento WASD
         if (modoLibre && !ImGui::GetIO().WantCaptureKeyboard) {
             camera.processKeyboard(
@@ -385,6 +396,89 @@ void update(float deltaTime) override {
                 isKeyPressed(GLFW_KEY_SPACE), isKeyPressed(GLFW_KEY_LEFT_SHIFT),
                 deltaTime
             );
+        }
+
+        // Si la camara se desplazo, entonces
+        if (camera.position != posicionAnterior) {
+            glm::vec3 posFutura = camera.position;
+            glm::vec3 radioJugador(0.2f, 0.8f, 0.2f); 
+
+            // validamos el eje x
+            camera.position = glm::vec3(posFutura.x, posicionAnterior.y, posicionAnterior.z);
+            AABB cajaX = { camera.position - radioJugador, camera.position + radioJugador };
+            for (const Mesh& m : escena) {
+                if (!m.esDinamico && comprobarColision(cajaX, m.obtenerAABBGlobal())) {
+                    camera.position.x = posicionAnterior.x; // Chocamos en X, cancelamos solo X
+                    break;
+                }
+            }
+            posFutura.x = camera.position.x; // Guardamos el X validado
+
+            // validamos el eje y
+            camera.position = glm::vec3(posFutura.x, posFutura.y, posicionAnterior.z);
+            AABB cajaY = { camera.position - radioJugador, camera.position + radioJugador };
+            for (const Mesh& m : escena) {
+                if (!m.esDinamico && comprobarColision(cajaY, m.obtenerAABBGlobal())) {
+                    camera.position.y = posicionAnterior.y; // Chocamos en Y, cancelamos solo Y
+                    break;
+                }
+            }
+            posFutura.y = camera.position.y;
+
+            // validamos el eje z
+            camera.position = glm::vec3(posFutura.x, posFutura.y, posFutura.z);
+            AABB cajaZ = { camera.position - radioJugador, camera.position + radioJugador };
+            for (const Mesh& m : escena) {
+                if (!m.esDinamico && comprobarColision(cajaZ, m.obtenerAABBGlobal())) {
+                    camera.position.z = posicionAnterior.z; // Chocamos en Z, cancelamos solo Z
+                    break;
+                }
+            }
+        }
+
+        // Detector de colisiones entre los Meshes
+        for (size_t i = 0; i < escena.size(); i++) {
+            // Solo procesamos objetos dinamico y velocidad > 0
+            if (escena[i].esDinamico && glm::length(escena[i].velocidad) > 0.0f) {
+                
+                glm::vec3 posAnterior = escena[i].position;
+                escena[i].position += escena[i].velocidad * deltaTime; // Despplazamos por adelantado el objeto
+                
+                AABB cajaDinamica = escena[i].obtenerAABBGlobal();
+                bool choco = false;
+
+                // Comprobar contra los demas objetos 
+                for (size_t j = 0; j < escena.size(); j++) {
+                    if (i == j) continue; // Sin contarlo a el mismo
+
+                    AABB cajaOtro = escena[j].obtenerAABBGlobal();
+                    
+                    if (comprobarColision(cajaDinamica, cajaOtro)) {
+                        choco = true;
+                        // Lo devolvemos a su posicion original
+                        escena[i].position = posAnterior;
+                        escena[i].velocidad = glm::vec3(0.0f);
+                        
+                        // Si chocan podrian ser elimminados 
+                        // if (escena[j].esDinamico) {
+                        //     escena[i].borrame = true;
+                        //     escena[j].borrame = true;
+                        // }
+                        break; 
+                    }
+                }
+            }
+        }
+
+        // Elimina objetos de la escena marcados para ello
+        for (auto it = escena.begin(); it != escena.end(); ) {
+            if (it->borrame) {
+                it->limpiarGPU();
+                it = escena.erase(it);
+                objSeleccionado = -1; // Resetear la selección de ImGui por seguridad
+            } else {
+                ++it;
+            }
         }
 
         // Estados de OpenGL compartidos
