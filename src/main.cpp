@@ -38,21 +38,162 @@ in vec3 Normal;
 
 out vec4 FragColor;
 
+// Direccional
+struct DirLight {
+    vec3 direction;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+// Puntual
+struct PointLight {
+    vec3 position;
+    float constant;
+    float linear;
+    float quadratic;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+// Luz focal o interna
+struct SpotLight {
+    vec3 position;
+    vec3 direction;
+    float cutOff;
+    float outerCutOff;
+    float constant;
+    float linear;
+    float quadratic;
+    vec3 ambient;
+    vec3 diffuse;
+    vec3 specular;
+};
+
+// Las uniforme del color del objeto
 uniform vec4 objectColor;
-uniform vec3 lightDir;
-uniform vec3 lightColor;
-uniform vec3 ambientLight;
+
+// Luz direccional (el sol del mundo)
+uniform DirLight dirLight;
+
+// Los points Lights que serian bombillos o punto que emiten luz
+#define NR_POINT_LIGHTS 2
+uniform PointLight pointLights[NR_POINT_LIGHTS];
+
+// Una linterna
+uniform SpotLight spotLight;
+
+// Datos extra para los calculos
+uniform vec3 viewPos; // Posicion de la camara (necesario para el brillo intenso de Blinn Phong)
+uniform int modoIluminacion; // 0 es Flat, 1 Lambert y 2 Blinn-Phong
+
+// Funciones para las luces
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
 
 void main() {
-    vec3 ambient = ambientLight * objectColor.rgb;
+    // Definimos la normal que es necesaria para los 3 modelos
+    vec3 norm;
+    if (modoIluminacion == 0){
+        // Hacemos flat Shadding  calculando una normal cruda perpendicual al triangulo
+        vec3 fdx = dFdx(FragPos);
+        vec3 fdy = dFdy(FragPos);
+        norm = normalize(cross(fdx, fdy));
+    } else {
+        // Con Lambert y Blinn=Phong se normaliza la normal que viene
+        norm = normalize(Normal);
+    }
+
+    // Sacamos la direccion que esta la camara con respecto al pixel del punto
+    vec3 viewDir = normalize(viewPos - FragPos);
     
-    vec3 norm = normalize(Normal);
-    vec3 lightDirNorm = normalize(-lightDir);
-    float diff = max(dot(norm, lightDirNorm), 0.0);
-    vec3 diffuse = diff * lightColor * objectColor.rgb;
+    // Inicizalizamos el pixel negro
+    vec3 result = vec3(0.0);
+
+    // Sumamos el aporte de la luz direccional
+    result += CalcDirLight(dirLight, norm, viewDir);
     
-    vec3 result = ambient + diffuse;
+    // Ahora cada uno de los pointLights
+    for(int i = 0; i < NR_POINT_LIGHTS; i++) {
+        result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);    
+    }
+    
+    // Ahora el spotlight
+    result += CalcSpotLight(spotLight, norm, FragPos, viewDir);    
+    
+    // Instanciamos el color final obtenido
     FragColor = vec4(result, objectColor.a);
+}
+
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir) {
+    vec3 lightDir = normalize(-light.direction);
+    
+    // Ambiental
+    vec3 ambient = light.ambient * objectColor.rgb;
+    
+    // Difusa
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.diffuse * diff * objectColor.rgb;
+    
+    // Espular en blinn-phong
+    vec3 specular = vec3(0.0);
+    if (modoIluminacion == 2) {
+        vec3 halfwayDir = normalize(lightDir + viewDir);  
+        float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0); // 32.0 es el nivel de pulido
+        specular = light.specular * spec * objectColor.rgb;
+    }
+    
+    return (ambient + diffuse + specular);
+}
+
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir) {
+    vec3 lightDir = normalize(light.position - fragPos);
+    
+    vec3 ambient = light.ambient * objectColor.rgb;
+    
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.diffuse * diff * objectColor.rgb;
+    
+    vec3 specular = vec3(0.0);
+    if (modoIluminacion == 2) {
+        vec3 halfwayDir = normalize(lightDir + viewDir);  
+        float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
+        specular = light.specular * spec * objectColor.rgb;
+    }
+    
+    // Atenuación por distancia
+    float distance = length(light.position - fragPos);
+    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
+    
+    return (ambient + diffuse + specular) * attenuation;
+}
+
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir) {
+    vec3 lightDir = normalize(light.position - fragPos);
+    
+    float diff = max(dot(normal, lightDir), 0.0);
+    vec3 diffuse = light.diffuse * diff * objectColor.rgb;
+    
+    vec3 specular = vec3(0.0);
+    if (modoIluminacion == 2) {
+        vec3 halfwayDir = normalize(lightDir + viewDir);  
+        float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
+        specular = light.specular * spec * objectColor.rgb;
+    }
+    
+    // Suavizado de los bordes del cono de luz
+    float theta = dot(lightDir, normalize(-light.direction)); 
+    float epsilon = light.cutOff - light.outerCutOff;
+    float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
+    
+    // Atenuacion por distancia
+    float distance = length(light.position - fragPos);
+    float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
+    
+    vec3 ambient = light.ambient * objectColor.rgb;
+    return ambient * attenuation + (diffuse + specular) * attenuation * intensity;
 }
 )";
 
@@ -130,6 +271,9 @@ private:
     bool tabPresionado = false;
     int triSeleccionadoGlobal = -1;
     int subMeshSeleccionadoId = -1;
+
+    // Iluminacion 
+    int modIluminacion = 1; // 0 para Flat, 1 para Lambert y 2 para Blinn-Phong
 
     // Lista de objetos 3D en la escena y control de seleccion
     std::vector<Mesh> escena;
@@ -475,7 +619,7 @@ void update(float deltaTime) override {
             if (it->borrame) {
                 it->limpiarGPU();
                 it = escena.erase(it);
-                objSeleccionado = -1; // Resetear la selección de ImGui por seguridad
+                objSeleccionado = -1; // Liberamos el apuntador a objetos por si acaso
             } else {
                 ++it;
             }
@@ -537,11 +681,52 @@ void update(float deltaTime) override {
 
         glUseProgram(shaderProgram);
 
-        // Luces
-        glUniform3f(glGetUniformLocation(shaderProgram, "lightDir"), -0.5f, -1.0f, -0.3f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "lightColor"), 0.8f, 0.8f, 0.8f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "ambientLight"), 0.25f, 0.25f, 0.25f);
+        // Data g lobal
+        glUniform1i(glGetUniformLocation(shaderProgram, "modoIluminacion"), modIluminacion);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, glm::value_ptr(camera.position));
 
+        // Luz direciconal
+        glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.ambient"), 0.1f, 0.1f, 0.1f); // Luz base muy bajita
+        glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.diffuse"), 0.4f, 0.4f, 0.4f); // Gris medio
+        glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.specular"), 0.5f, 0.5f, 0.5f); // Brillo del sol
+
+        // Point Light #1
+        // Posicion inicial ajustable
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].position"), 2.0f, 2.0f, 2.0f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].ambient"), 0.05f, 0.05f, 0.05f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].diffuse"), 0.8f, 0.8f, 0.8f); 
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].specular"), 1.0f, 1.0f, 1.0f);
+        // Constantes fisicas para que la luz viaje unos 50 metros antes de apagarse
+        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].linear"), 0.09f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].quadratic"), 0.032f);
+
+        // Point Light #2
+        // Posicion inicial ajustable
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].position"), -2.0f, 2.0f, -2.0f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].ambient"), 0.05f, 0.05f, 0.05f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].diffuse"), 0.8f, 0.8f, 0.8f); 
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].specular"), 1.0f, 1.0f, 1.0f);
+        
+        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].linear"), 0.09f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].quadratic"), 0.032f);
+
+        // Spot Lights
+        glUniform3fv(glGetUniformLocation(shaderProgram, "spotLight.position"), 1, glm::value_ptr(camera.position));
+        glUniform3fv(glGetUniformLocation(shaderProgram, "spotLight.direction"), 1, glm::value_ptr(camera.front));
+        // Angulos de la linterna: 12.5 grados internos, 15.0 externos para difuminar
+        glUniform1f(glGetUniformLocation(shaderProgram, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
+        glUniform1f(glGetUniformLocation(shaderProgram, "spotLight.outerCutOff"), glm::cos(glm::radians(15.0f)));
+        glUniform1f(glGetUniformLocation(shaderProgram, "spotLight.constant"), 1.0f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "spotLight.linear"), 0.09f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "spotLight.quadratic"), 0.032f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
+        
+        
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(proj));
 
@@ -634,6 +819,13 @@ void update(float deltaTime) override {
         ImGui::RadioButton("Local (Sub-malla)", &modoSeleccion, 1); ImGui::SameLine();
         ImGui::RadioButton("Por Triangulo", &modoSeleccion, 2);
         
+        ImGui::Separator();
+
+        ImGui::Text("Modelo de Iluminacion:");
+        ImGui::RadioButton("Flat Shading", &modIluminacion, 0); ImGui::SameLine();
+        ImGui::RadioButton("Lambert (Mate)", &modIluminacion, 1); ImGui::SameLine();
+        ImGui::RadioButton("Blinn-Phong (Brillo)", &modIluminacion, 2);
+
         ImGui::Separator();
 
         ImGui::Text("Insertar Figuras:");
