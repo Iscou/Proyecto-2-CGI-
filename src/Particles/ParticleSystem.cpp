@@ -1,0 +1,132 @@
+#include "ParticleSystem.h"
+
+ParticleSystem::ParticleSystem(unsigned int maxParticles) 
+    : maxParticles(maxParticles), lastUsedParticle(0) {
+    particles.resize(maxParticles);
+    InitBuffers();
+}
+
+void ParticleSystem::InitBuffers() {
+    float quadVertices[] = {
+        // Posiciones          // Normales
+        -0.5f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+        -0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+         0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+
+        -0.5f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+         0.5f, -0.5f, 0.0f,    0.0f, 0.0f, 1.0f,
+         0.5f,  0.5f, 0.0f,    0.0f, 0.0f, 1.0f
+    };
+
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), quadVertices, GL_STATIC_DRAW);
+    
+    // Atributo 0: Posición (aPos)
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    
+    // Atributo 1: Normal (aNormal)
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    
+    glBindVertexArray(0);
+}
+
+void ParticleSystem::Update(float dt, glm::vec3 emitterPosition, unsigned int newParticlesCount) {
+    // Añadir nuevas partículas (spawn)
+    for (unsigned int i = 0; i < newParticlesCount; ++i) {
+        int unusedParticle = FirstUnusedParticle();
+        RespawnParticle(particles[unusedParticle], emitterPosition);
+    }
+
+    // Actualizar todas las partículas activas
+    for (unsigned int i = 0; i < maxParticles; ++i) {
+        Particle &p = particles[i];
+        if (p.Life > 0.0f) {
+            p.Life -= dt; // Reducir tiempo de vida
+            if (p.Life > 0.0f) {
+                // Actualizar física 
+                p.Position += p.Velocity * dt;
+                p.Color.a -= dt * 2.5f;
+            }
+        }
+    }
+}
+
+void ParticleSystem::Draw(GLuint shaderProgram, glm::mat4 viewMatrix, glm::mat4 projectionMatrix, glm::vec3 viewPos) {
+    // Habilitar blending para transparencias
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // Activar el programa de shader directamente con su ID
+    glUseProgram(shaderProgram);
+
+    // Enviar matrices de cámara usando OpenGL nativo
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, &viewMatrix[0][0]);
+    glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, &projectionMatrix[0][0]);
+
+    // Posición de la cámara
+    glUniform3f(glGetUniformLocation(shaderProgram, "viewPos"), viewPos.x, viewPos.y, viewPos.z);
+
+    // Modo de iluminación (1 para Lambert)
+    glUniform1i(glGetUniformLocation(shaderProgram, "modoIluminacion"), 1);
+
+    // Configurar luz direccional básica
+    glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
+    glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.ambient"), 0.3f, 0.3f, 0.3f);
+    glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.diffuse"), 0.5f, 0.5f, 0.5f);
+    glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.specular"), 0.5f, 0.5f, 0.5f);
+
+    glBindVertexArray(VAO);
+    for (unsigned int i = 0; i < maxParticles; ++i) {
+        Particle& p = particles[i];
+        if (p.Life > 0.0f) {
+            // Construir la matriz Model para la partícula actual
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::translate(model, p.Position);
+            model = glm::scale(model, glm::vec3(p.Size));
+
+            // Enviar la matriz Model y el color del objeto
+            glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, &model[0][0]);
+            glUniform4f(glGetUniformLocation(shaderProgram, "objectColor"), p.Color.r, p.Color.g, p.Color.b, p.Color.a);
+
+            // Dibujar el quad
+            glDrawArrays(GL_TRIANGLES, 0, 6);
+        }
+    }
+    glBindVertexArray(0);
+    glDisable(GL_BLEND);
+}
+
+unsigned int ParticleSystem::FirstUnusedParticle() {
+    // Buscar desde el último usado para optimizar
+    for (unsigned int i = lastUsedParticle; i < maxParticles; ++i) {
+        if (particles[i].Life <= 0.0f) {
+            lastUsedParticle = i;
+            return i;
+        }
+    }
+    // Si no encuentra, busca desde el principio
+    for (unsigned int i = 0; i < lastUsedParticle; ++i) {
+        if (particles[i].Life <= 0.0f) {
+            lastUsedParticle = i;
+            return i;
+        }
+    }
+    return 0; // Si están todas llenas, sobreescribe la primera
+}
+
+void ParticleSystem::RespawnParticle(Particle &particle, glm::vec3 emitterPosition) {
+    float random = ((rand() % 100) - 50) / 10.0f;
+    float rColor = 0.5f + ((rand() % 100) / 100.0f);
+    
+    particle.Position = emitterPosition + glm::vec3(random * 0.2f, 0.0f, random * 0.2f);
+    particle.Velocity = glm::vec3(0.0f, 2.0f + ((rand() % 100) / 50.0f), 0.0f); 
+    particle.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); 
+    particle.Life = 1.0f; 
+    particle.Size = 0.2f; 
+}

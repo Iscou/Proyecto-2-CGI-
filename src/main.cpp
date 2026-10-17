@@ -1,6 +1,7 @@
 #include "Engine/engine3D.h"
 #include "Camera/camera.h"
 #include "Objects/Mesh.h"
+#include "Particles/ParticleSystem.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <filesystem>
 #include <fstream>
@@ -255,6 +256,10 @@ private:
     // Skybox
     GLuint skyboxShaderProgram;
     SkyBox* miCielo = nullptr;
+    
+    ParticleSystem* particleSystem = new ParticleSystem(1000); // Sistema de partículas
+    glm::vec3* emisorPos = new glm::vec3(0.0f, 0.0f, 0.0f);
+	bool emitirParticulas = false;
 
     // Rutas del skybox 
     std::vector<std::string> carasCielo = {
@@ -674,6 +679,11 @@ void update(float deltaTime) override {
 
         // Dibujar en pantalla
         glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+
+        // Actualizar el sistema de partículas
+        if (emitirParticulas) {
+            particleSystem->Update(deltaTime, *emisorPos, 5);
+        }
         
         // Limpieza clasica de color visible
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
@@ -801,6 +811,11 @@ void update(float deltaTime) override {
         }
 
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+        // Renderizar el sistema de partículas al final
+        if (emitirParticulas) {
+            particleSystem->Draw(shaderProgram, view, proj, camera.position);
+        }
     }
 
     void drawUI() override {
@@ -825,6 +840,12 @@ void update(float deltaTime) override {
         ImGui::RadioButton("Flat Shading", &modIluminacion, 0); ImGui::SameLine();
         ImGui::RadioButton("Lambert (Mate)", &modIluminacion, 1); ImGui::SameLine();
         ImGui::RadioButton("Blinn-Phong (Brillo)", &modIluminacion, 2);
+
+        ImGui::Separator();
+        ImGui::Text("Particulas:");
+        if (ImGui::Button("Emitir Particulas")) {
+            emitirParticulas = !emitirParticulas;
+        }
 
         ImGui::Separator();
 
