@@ -12,6 +12,18 @@ struct Particle {
     float Size;
 };
 
+// Estructura para controlar los parámetros en tiempo real
+struct ParticleConfig {
+    float startSize = 0.2f;
+    float endSize = 0.1f;
+    float minSpeed = 2.0f;
+    float maxSpeed = 4.0f;
+    float coneSpread = 1.5f;
+    glm::vec4 baseColor = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
+    float colorVariance = 0.5f;
+    float particleLife = 1.0f;
+};
+
 class ParticleSystem {
 public:
     ParticleSystem(unsigned int maxParticles);
@@ -19,6 +31,8 @@ public:
 
     void Update(float dt, glm::vec3 emitterPosition, unsigned int newParticlesCount);
     void Draw(GLuint shaderProgram, glm::mat4 viewMatrix, glm::mat4 projectionMatrix, glm::vec3 viewPos);
+
+    ParticleConfig Config;
 
 private:
     std::vector<Particle> particles;

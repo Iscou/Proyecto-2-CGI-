@@ -260,6 +260,7 @@ private:
     ParticleSystem* particleSystem = new ParticleSystem(1000); // Sistema de partículas
     glm::vec3* emisorPos = new glm::vec3(0.0f, 0.0f, 0.0f);
 	bool emitirParticulas = false;
+    int particlesPerFrame = 5;
 
     // Rutas del skybox 
     std::vector<std::string> carasCielo = {
@@ -682,7 +683,7 @@ void update(float deltaTime) override {
 
         // Actualizar el sistema de partículas
         if (emitirParticulas) {
-            particleSystem->Update(deltaTime, *emisorPos, 5);
+            particleSystem->Update(deltaTime, *emisorPos, particlesPerFrame);
         }
         
         // Limpieza clasica de color visible
@@ -845,6 +846,18 @@ void update(float deltaTime) override {
         ImGui::Text("Particulas:");
         if (ImGui::Button("Emitir Particulas")) {
             emitirParticulas = !emitirParticulas;
+        }
+        if (emitirParticulas) {
+            
+            ImGui::SliderFloat("Tamaño Inicial", &particleSystem->Config.startSize, 0.01f, 1.0f);
+            ImGui::SliderFloat("Apertura Cono", &particleSystem->Config.coneSpread, 0.0f, 5.0f);
+            ImGui::SliderFloat("Velocidad Mínima", &particleSystem->Config.minSpeed, 0.1f, 5.0f);
+            ImGui::SliderFloat("Velocidad Máxima", &particleSystem->Config.maxSpeed, 5.0f, 10.0f);
+            ImGui::ColorEdit4("Color Base", &particleSystem->Config.baseColor[0]);
+
+            // La cantidad de partículas por frame también la puedes controlar dinámicamente aquí
+            ImGui::SliderInt("Tasa de Emisión", &particlesPerFrame, 0, 50);
+            
         }
 
         ImGui::Separator();

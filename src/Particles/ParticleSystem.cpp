@@ -37,21 +37,24 @@ void ParticleSystem::InitBuffers() {
 }
 
 void ParticleSystem::Update(float dt, glm::vec3 emitterPosition, unsigned int newParticlesCount) {
-    // Añadir nuevas partículas (spawn)
+    // Spawn de nuevas partículas con la cantidad pasada por parámetro
     for (unsigned int i = 0; i < newParticlesCount; ++i) {
         int unusedParticle = FirstUnusedParticle();
         RespawnParticle(particles[unusedParticle], emitterPosition);
     }
 
-    // Actualizar todas las partículas activas
+    // Actualizar físicas y propiedades en tiempo real
     for (unsigned int i = 0; i < maxParticles; ++i) {
-        Particle &p = particles[i];
+        Particle& p = particles[i];
         if (p.Life > 0.0f) {
-            p.Life -= dt; // Reducir tiempo de vida
+            p.Life -= dt;
             if (p.Life > 0.0f) {
-                // Actualizar física 
+                // Movimiento
                 p.Position += p.Velocity * dt;
-                p.Color.a -= dt * 2.5f;
+                
+                p.Color.a = p.Life / Config.particleLife; 
+
+                p.Size -= dt * 0.1f; 
             }
         }
     }
@@ -120,13 +123,28 @@ unsigned int ParticleSystem::FirstUnusedParticle() {
     return 0; // Si están todas llenas, sobreescribe la primera
 }
 
-void ParticleSystem::RespawnParticle(Particle &particle, glm::vec3 emitterPosition) {
-    float random = ((rand() % 100) - 50) / 10.0f;
-    float rColor = 0.5f + ((rand() % 100) / 100.0f);
-    
-    particle.Position = emitterPosition + glm::vec3(random * 0.2f, 0.0f, random * 0.2f);
-    particle.Velocity = glm::vec3(0.0f, 2.0f + ((rand() % 100) / 50.0f), 0.0f); 
-    particle.Color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); 
-    particle.Life = 1.0f; 
-    particle.Size = 0.2f; 
+void ParticleSystem::RespawnParticle(Particle& particle, glm::vec3 emitterPosition) {
+    particle.Position = emitterPosition;
+
+    // Usar el cono que hicimos antes pero basado en la configuración
+    float angle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
+    float vx = cos(angle) * Config.coneSpread;
+    float vz = sin(angle) * Config.coneSpread;
+
+    float speedRange = Config.maxSpeed - Config.minSpeed;
+    float vy = Config.minSpeed + (static_cast<float>(rand() % 100) / 100.0f) * speedRange;
+
+    particle.Velocity = glm::vec3(vx, vy, vz);
+
+    // Variación de color dinámica
+    float rVar = ((rand() % 100) / 100.0f) * Config.colorVariance;
+    particle.Color = glm::vec4(
+        glm::clamp(Config.baseColor.r + rVar, 0.0f, 1.0f),
+        glm::clamp(Config.baseColor.g + rVar, 0.0f, 1.0f),
+        glm::clamp(Config.baseColor.b, 0.0f, 1.0f),
+        Config.baseColor.a
+    );
+
+    particle.Life = Config.particleLife;
+    particle.Size = Config.startSize;
 }
