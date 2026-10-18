@@ -850,11 +850,13 @@ void update(float deltaTime) override {
         if (emitirParticulas) {
             
             ImGui::SliderFloat("Tamaño Inicial", &particleSystem->Config.startSize, 0.01f, 1.0f);
+            ImGui::DragFloat3("Posicion", glm::value_ptr(*emisorPos), 0.05f);
             ImGui::SliderFloat("Apertura Cono", &particleSystem->Config.coneSpread, 0.0f, 5.0f);
             ImGui::SliderFloat("Velocidad Mínima", &particleSystem->Config.minSpeed, 0.1f, 5.0f);
             ImGui::SliderFloat("Velocidad Máxima", &particleSystem->Config.maxSpeed, 5.0f, 10.0f);
             ImGui::ColorEdit4("Color Base", &particleSystem->Config.baseColor[0]);
 
+            ImGui::SliderInt("Direccion", &particleSystem->Config.direction, 0, 5);
             // La cantidad de partículas por frame también la puedes controlar dinámicamente aquí
             ImGui::SliderInt("Tasa de Emisión", &particlesPerFrame, 0, 50);
             

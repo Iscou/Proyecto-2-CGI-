@@ -22,6 +22,7 @@ struct ParticleConfig {
     glm::vec4 baseColor = glm::vec4(1.0f, 0.5f, 0.0f, 1.0f);
     float colorVariance = 0.5f;
     float particleLife = 1.0f;
+    int direction = 2;
 };
 
 class ParticleSystem {

@@ -128,11 +128,27 @@ void ParticleSystem::RespawnParticle(Particle& particle, glm::vec3 emitterPositi
 
     // Usar el cono que hicimos antes pero basado en la configuración
     float angle = static_cast<float>(rand() % 360) * 3.14159f / 180.0f;
-    float vx = cos(angle) * Config.coneSpread;
-    float vz = sin(angle) * Config.coneSpread;
-
     float speedRange = Config.maxSpeed - Config.minSpeed;
-    float vy = Config.minSpeed + (static_cast<float>(rand() % 100) / 100.0f) * speedRange;
+
+    float vx, vy, vz;
+
+    if (Config.direction == 0 || Config.direction == 1) {
+        vx = Config.minSpeed + (static_cast<float>(rand() % 100) / 100.0f) * speedRange;
+        if (Config.direction == 1) vx = -vx;
+        vy = cos(angle) * Config.coneSpread;
+        vz = sin(angle) * Config.coneSpread;
+    } else if (Config.direction == 2 || Config.direction == 3) {
+        vy = Config.minSpeed + (static_cast<float>(rand() % 100) / 100.0f) * speedRange;
+        if (Config.direction == 3) vy = -vy;
+        vx = cos(angle) * Config.coneSpread;
+        vz = sin(angle) * Config.coneSpread;
+    }
+    else {
+        vz = Config.minSpeed + (static_cast<float>(rand() % 100) / 100.0f) * speedRange;
+        if (Config.direction == 5) vz = -vz;
+        vx = cos(angle) * Config.coneSpread;
+        vy = sin(angle) * Config.coneSpread;
+    }
 
     particle.Velocity = glm::vec3(vx, vy, vz);
 
