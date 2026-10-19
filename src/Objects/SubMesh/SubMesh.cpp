@@ -68,6 +68,7 @@ void SubMesh::subirAGPU() {
         // Empaqueta los 3 vertices del triangulo (Posicion + Normal) 
         glm::vec3 verts[3] = { t.v1, t.v2, t.v3 };
         glm::vec3 norms[3] = { n1, n2, n3 };
+        glm::vec2 uvs[3]   = { t.vt1, t.vt2, t.vt3 };
 
         for (int i = 0; i < 3; ++i) {
             datosTriangulos.push_back(verts[i].x);
@@ -76,6 +77,8 @@ void SubMesh::subirAGPU() {
             datosTriangulos.push_back(norms[i].x);
             datosTriangulos.push_back(norms[i].y);
             datosTriangulos.push_back(norms[i].z);
+            datosTriangulos.push_back(uvs[i].x);
+            datosTriangulos.push_back(uvs[i].y);
 
             // Empaqueta el segmento de linea para visualizar la normal (v -> v + n*L)
             glm::vec3 punta = verts[i] + norms[i] * LONGITUD_NORMAL;
@@ -106,10 +109,17 @@ void SubMesh::subirAGPU() {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, datosTriangulos.size() * sizeof(float), datosTriangulos.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    // Stride total = 8 floats (3 pos + 3 norm + 2 uv)
+    GLsizei stride = 8 * sizeof(float);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+
+    glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (void*)(6 * sizeof(float)));
+    glEnableVertexAttribArray(2);
 
     // Sube VAO y VBO de las Lineas de Normales
     glGenVertexArrays(1, &vaoNormales);
@@ -118,9 +128,10 @@ void SubMesh::subirAGPU() {
     glBindBuffer(GL_ARRAY_BUFFER, vboNormales);
     glBufferData(GL_ARRAY_BUFFER, datosLineasNormales.size() * sizeof(float), datosLineasNormales.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    GLsizei strideNormales = 6 * sizeof(float);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, strideNormales, (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, strideNormales, (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
@@ -153,6 +164,14 @@ void SubMesh::dibujar(GLuint shaderProgram, const glm::mat4& matrizPadre,
     glm::mat4 modelFinal = matrizPadre * getMatrizLocal();
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelFinal));
     glUniform4fv(glGetUniformLocation(shaderProgram, "objectColor"), 1, glm::value_ptr(color));
+
+    // Configurar texturas para el Shader
+    glUniform1i(glGetUniformLocation(shaderProgram, "hasTexture"), hasTexture ? 1 : 0);
+    if (hasTexture) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, textureID);
+        glUniform1i(glGetUniformLocation(shaderProgram, "ourTexture"), 0);
+    }
 
     // Dibuja la malla principal
     if (verWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

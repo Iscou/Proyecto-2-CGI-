@@ -2,6 +2,7 @@
 #include "Camera/camera.h"
 #include "Objects/Mesh.h"
 #include "Particles/ParticleSystem.h"
+#include "Textures/TexturesManager.h"
 #include <glm/gtc/type_ptr.hpp>
 #include <filesystem>
 #include <fstream>
@@ -17,9 +18,11 @@ const char* vertexShaderSrc = R"(
 #version 330 core
 layout (location = 0) in vec3 aPos;
 layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoord;
 
 out vec3 FragPos;
 out vec3 Normal;
+out vec2 TexCoord;
 
 uniform mat4 model;
 uniform mat4 view;
@@ -29,6 +32,7 @@ void main() {
     FragPos = vec3(model * vec4(aPos, 1.0));
     Normal = mat3(transpose(inverse(model))) * aNormal;
     gl_Position = projection * view * vec4(FragPos, 1.0);
+    TexCoord = aTexCoord;
 }
 )";
 
@@ -36,6 +40,7 @@ const char* fragmentShaderSrc = R"(
 #version 330 core
 in vec3 FragPos;
 in vec3 Normal;
+in vec2 TexCoord;
 
 out vec4 FragColor;
 
@@ -89,10 +94,14 @@ uniform SpotLight spotLight;
 uniform vec3 viewPos; // Posicion de la camara (necesario para el brillo intenso de Blinn Phong)
 uniform int modoIluminacion; // 0 es Flat, 1 Lambert y 2 Blinn-Phong
 
+// Texturas
+uniform bool hasTexture;
+uniform sampler2D ourTexture;
+
 // Funciones para las luces
-vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 baseColor);
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 baseColor);
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 baseColor);
 
 void main() {
     // Definimos la normal que es necesaria para los 3 modelos
@@ -110,58 +119,64 @@ void main() {
     // Sacamos la direccion que esta la camara con respecto al pixel del punto
     vec3 viewDir = normalize(viewPos - FragPos);
     
+    // Definimos el color base del objeto, si tiene textura se multiplica con la luz
+    vec3 baseColor = objectColor.rgb;
+    if (hasTexture) {
+        baseColor *= texture(ourTexture, TexCoord).rgb; // Multiplica la textura con la luz
+    }
+    
     // Inicizalizamos el pixel negro
     vec3 result = vec3(0.0);
 
     // Sumamos el aporte de la luz direccional
-    result += CalcDirLight(dirLight, norm, viewDir);
+    result += CalcDirLight(dirLight, norm, viewDir, baseColor);
     
     // Ahora cada uno de los pointLights
     for(int i = 0; i < NR_POINT_LIGHTS; i++) {
-        result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);    
+        result += CalcPointLight(pointLights[i], norm, FragPos, viewDir, baseColor);    
     }
     
     // Ahora el spotlight
-    result += CalcSpotLight(spotLight, norm, FragPos, viewDir);    
+    result += CalcSpotLight(spotLight, norm, FragPos, viewDir, baseColor);    
     
     // Instanciamos el color final obtenido
     FragColor = vec4(result, objectColor.a);
 }
 
-vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir) {
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 baseColor) {
     vec3 lightDir = normalize(-light.direction);
     
     // Ambiental
-    vec3 ambient = light.ambient * objectColor.rgb;
+    vec3 ambient = light.ambient * baseColor;
     
     // Difusa
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * diff * objectColor.rgb;
+    vec3 diffuse = light.diffuse * diff * baseColor;
     
     // Espular en blinn-phong
     vec3 specular = vec3(0.0);
     if (modoIluminacion == 2) {
         vec3 halfwayDir = normalize(lightDir + viewDir);  
         float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0); // 32.0 es el nivel de pulido
-        specular = light.specular * spec * objectColor.rgb;
+        specular = light.specular * spec * baseColor;
     }
     
     return (ambient + diffuse + specular);
 }
 
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir) {
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 baseColor) {
     vec3 lightDir = normalize(light.position - fragPos);
     
-    vec3 ambient = light.ambient * objectColor.rgb;
+    vec3 ambient = light.ambient * baseColor;
     
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * diff * objectColor.rgb;
+    vec3 diffuse = light.diffuse * diff * baseColor;
     
     vec3 specular = vec3(0.0);
     if (modoIluminacion == 2) {
         vec3 halfwayDir = normalize(lightDir + viewDir);  
         float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
-        specular = light.specular * spec * objectColor.rgb;
+        specular = light.specular * spec * baseColor;
     }
     
     // Atenuación por distancia
@@ -171,17 +186,17 @@ vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir) {
     return (ambient + diffuse + specular) * attenuation;
 }
 
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir) {
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 baseColor) {
     vec3 lightDir = normalize(light.position - fragPos);
     
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * diff * objectColor.rgb;
+    vec3 diffuse = light.diffuse * diff * baseColor;
     
     vec3 specular = vec3(0.0);
     if (modoIluminacion == 2) {
         vec3 halfwayDir = normalize(lightDir + viewDir);  
         float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
-        specular = light.specular * spec * objectColor.rgb;
+        specular = light.specular * spec * baseColor;
     }
     
     // Suavizado de los bordes del cono de luz
@@ -193,7 +208,7 @@ vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir) {
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
     
-    vec3 ambient = light.ambient * objectColor.rgb;
+    vec3 ambient = light.ambient * baseColor;
     return ambient * attenuation + (diffuse + specular) * attenuation * intensity;
 }
 )";
@@ -256,10 +271,10 @@ private:
     // Skybox
     GLuint skyboxShaderProgram;
     SkyBox* miCielo = nullptr;
-    
+
     ParticleSystem* particleSystem = new ParticleSystem(1000); // Sistema de partículas
     glm::vec3* emisorPos = new glm::vec3(0.0f, 0.0f, 0.0f);
-	bool emitirParticulas = false;
+    bool emitirParticulas = false;
     int particlesPerFrame = 5;
 
     // Rutas del skybox 
@@ -306,24 +321,24 @@ private:
 
     void guardarEscena(const std::string& nombreArchivo) {
         if (!fs::exists("Saves")) fs::create_directory("Saves"); // Crea la carpeta default
-        
+
         json jEscena = json::array();
         for (const Mesh& m : escena) {
             json jMesh;
             jMesh["nombre"] = m.nombre;
-            jMesh["pos"] = {m.position.x, m.position.y, m.position.z};
-            jMesh["rot"] = {m.rotation.x, m.rotation.y, m.rotation.z};
-            jMesh["scl"] = {m.scale.x, m.scale.y, m.scale.z};
-            
+            jMesh["pos"] = { m.position.x, m.position.y, m.position.z };
+            jMesh["rot"] = { m.rotation.x, m.rotation.y, m.rotation.z };
+            jMesh["scl"] = { m.scale.x, m.scale.y, m.scale.z };
+
             // Guardamos el color de la primera submalla 
             if (!m.subMeshes.empty()) {
-                jMesh["color"] = {m.subMeshes[0].color.r, m.subMeshes[0].color.g, m.subMeshes[0].color.b, m.subMeshes[0].color.a};
+                jMesh["color"] = { m.subMeshes[0].color.r, m.subMeshes[0].color.g, m.subMeshes[0].color.b, m.subMeshes[0].color.a };
             }
             jEscena.push_back(jMesh);
         }
 
         std::ofstream archivo("Saves/" + nombreArchivo + ".json");
-        archivo << jEscena.dump(4); 
+        archivo << jEscena.dump(4);
         std::cout << "Escena guardada en Saves/" << nombreArchivo << ".json\n";
     }
 
@@ -342,27 +357,27 @@ private:
         for (const auto& jMesh : jEscena) {
             std::string nombreGuardado = jMesh["nombre"];
             Mesh m;
-            
+
             // Reconstruir la figura basandose en el sufijo
             if (nombreGuardado.find("Cubo") != std::string::npos) m = Mesh::crearCubo(contadorID, contadorID);
             else if (nombreGuardado.find("Piramide") != std::string::npos) m = Mesh::crearPiramide(contadorID, contadorID);
             else if (nombreGuardado.find("Esfera") != std::string::npos) m = Mesh::crearEsfera(contadorID, contadorID);
             else if (nombreGuardado.find("Cilindro") != std::string::npos) m = Mesh::crearCilindro(contadorID, contadorID);
-            else { 
+            else {
                 size_t pos = nombreGuardado.find('.');
                 std::string original = std::string(nombreGuardado.substr(0, pos));
                 m = Mesh::crearOBJ(contadorID, "assets/models/" + original + ".obj");
             }
-            
-            
+
+
             m.position = glm::vec3(jMesh["pos"][0], jMesh["pos"][1], jMesh["pos"][2]);
             m.rotation = glm::vec3(jMesh["rot"][0], jMesh["rot"][1], jMesh["rot"][2]);
             m.scale = glm::vec3(jMesh["scl"][0], jMesh["scl"][1], jMesh["scl"][2]);
-            
+
             if (!m.subMeshes.empty() && jMesh.contains("color")) {
                 m.subMeshes[0].color = glm::vec4(jMesh["color"][0], jMesh["color"][1], jMesh["color"][2], jMesh["color"][3]);
             }
-            
+
             escena.push_back(m);
             contadorID++;
         }
@@ -418,11 +433,11 @@ private:
         glDeleteShader(sv);
         glDeleteShader(sf);
     }
-   
+
 
 public:
     Proyecto2() : Engine3D(1280, 720, "Proyecto #2 - Renderizado y Manipulacion 3D") {}
-    ~Proyecto2() { 
+    ~Proyecto2() {
         delete miCielo;
     }
 
@@ -464,31 +479,34 @@ public:
 
         if (button == GLFW_MOUSE_BUTTON_LEFT) {
             glBindFramebuffer(GL_FRAMEBUFFER, pickingFBO);
-            GLuint pixelIDs[3]; 
+            GLuint pixelIDs[3];
             glReadPixels(x, height - y, 1, 1, GL_RGB_INTEGER, GL_UNSIGNED_INT, pixelIDs);
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-            if (pixelIDs[0] > 0) { 
+            if (pixelIDs[0] > 0) {
                 for (int i = 0; i < escena.size(); ++i) {
                     if (escena[i].id == pixelIDs[0]) {
                         objSeleccionado = i;
                         break;
                     }
                 }
-                
+
                 if (modoSeleccion == 1) {
                     subMeshSeleccionadoId = pixelIDs[1];
                     triSeleccionadoGlobal = -1;
-                } else if (modoSeleccion == 2) {
+                }
+                else if (modoSeleccion == 2) {
                     subMeshSeleccionadoId = pixelIDs[1];
                     triSeleccionadoGlobal = pixelIDs[2];
-                } else {
-                    subMeshSeleccionadoId = -1;
-                    triSeleccionadoGlobal = -1; 
                 }
-            } else {
+                else {
+                    subMeshSeleccionadoId = -1;
+                    triSeleccionadoGlobal = -1;
+                }
+            }
+            else {
                 subMeshSeleccionadoId = -1;
-                triSeleccionadoGlobal = -1; 
+                triSeleccionadoGlobal = -1;
             }
         }
 
@@ -517,13 +535,13 @@ public:
     }
 
 
-void update(float deltaTime) override {
+    void update(float deltaTime) override {
         // Alternar modo libre
         if (isKeyPressed(GLFW_KEY_TAB)) {
             if (!tabPresionado) {
                 modoLibre = !modoLibre;
                 glfwSetInputMode(getWindow(), GLFW_CURSOR, modoLibre ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-                
+
                 if (modoLibre) {
                     double cx, cy;
                     glfwGetCursorPos(getWindow(), &cx, &cy);
@@ -532,7 +550,8 @@ void update(float deltaTime) override {
                 }
                 tabPresionado = true;
             }
-        } else {
+        }
+        else {
             tabPresionado = false;
         }
 
@@ -551,7 +570,7 @@ void update(float deltaTime) override {
         // Si la camara se desplazo, entonces
         if (camera.position != posicionAnterior) {
             glm::vec3 posFutura = camera.position;
-            glm::vec3 radioJugador(0.2f, 0.8f, 0.2f); 
+            glm::vec3 radioJugador(0.2f, 0.8f, 0.2f);
 
             // validamos el eje x
             camera.position = glm::vec3(posFutura.x, posicionAnterior.y, posicionAnterior.z);
@@ -590,10 +609,10 @@ void update(float deltaTime) override {
         for (size_t i = 0; i < escena.size(); i++) {
             // Solo procesamos objetos dinamico y velocidad > 0
             if (escena[i].esDinamico && glm::length(escena[i].velocidad) > 0.0f) {
-                
+
                 glm::vec3 posAnterior = escena[i].position;
                 escena[i].position += escena[i].velocidad * deltaTime; // Despplazamos por adelantado el objeto
-                
+
                 AABB cajaDinamica = escena[i].obtenerAABBGlobal();
                 bool choco = false;
 
@@ -602,19 +621,19 @@ void update(float deltaTime) override {
                     if (i == j) continue; // Sin contarlo a el mismo
 
                     AABB cajaOtro = escena[j].obtenerAABBGlobal();
-                    
+
                     if (comprobarColision(cajaDinamica, cajaOtro)) {
                         choco = true;
                         // Lo devolvemos a su posicion original
                         escena[i].position = posAnterior;
                         escena[i].velocidad = glm::vec3(0.0f);
-                        
+
                         // Si chocan podrian ser elimminados 
                         // if (escena[j].esDinamico) {
                         //     escena[i].borrame = true;
                         //     escena[j].borrame = true;
                         // }
-                        break; 
+                        break;
                     }
                 }
             }
@@ -626,7 +645,8 @@ void update(float deltaTime) override {
                 it->limpiarGPU();
                 it = escena.erase(it);
                 objSeleccionado = -1; // Liberamos el apuntador a objetos por si acaso
-            } else {
+            }
+            else {
                 ++it;
             }
         }
@@ -638,7 +658,8 @@ void update(float deltaTime) override {
         if (cullFaceActivo) {
             glEnable(GL_CULL_FACE);
             glCullFace(GL_BACK);
-        } else {
+        }
+        else {
             glDisable(GL_CULL_FACE);
         }
 
@@ -649,9 +670,9 @@ void update(float deltaTime) override {
 
         // Dibujar monitor oculto
         glBindFramebuffer(GL_FRAMEBUFFER, pickingFBO);
-        
+
         // Limpiamos el buffer de enteros usando [0,0,0] 
-        GLuint clearColorZeros[4] = {0, 0, 0, 0};
+        GLuint clearColorZeros[4] = { 0, 0, 0, 0 };
         glClearBufferuiv(GL_COLOR, 0, clearColorZeros);
         glClear(GL_DEPTH_BUFFER_BIT);
 
@@ -663,14 +684,14 @@ void update(float deltaTime) override {
         for (const Mesh& m : escena) {
             glUniform1ui(glGetUniformLocation(pickingShaderProgram, "meshID"), static_cast<GLuint>(m.id));
             glm::mat4 matGlobal = m.getMatrizGlobal();
-            
+
             for (const SubMesh& sm : m.subMeshes) {
                 glUniform1ui(glGetUniformLocation(pickingShaderProgram, "subMeshID"), static_cast<GLuint>(sm.id));
-                
+
                 // Calculamos la matriz final 
                 glm::mat4 modelFinal = matGlobal * sm.getMatrizLocal();
                 glUniformMatrix4fv(glGetUniformLocation(pickingShaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelFinal));
-                
+
                 // Dibujado simple (sin wireframe, sin puntos, sin normales)
                 glBindVertexArray(sm.getVAO());
                 glDrawArrays(GL_TRIANGLES, 0, sm.getTotalVertices());
@@ -679,13 +700,13 @@ void update(float deltaTime) override {
         }
 
         // Dibujar en pantalla
-        glBindFramebuffer(GL_FRAMEBUFFER, 0); 
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         // Actualizar el sistema de partículas
         if (emitirParticulas) {
             particleSystem->Update(deltaTime, *emisorPos, particlesPerFrame);
         }
-        
+
         // Limpieza clasica de color visible
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -706,7 +727,7 @@ void update(float deltaTime) override {
         // Posicion inicial ajustable
         glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].position"), 2.0f, 2.0f, 2.0f);
         glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].ambient"), 0.05f, 0.05f, 0.05f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].diffuse"), 0.8f, 0.8f, 0.8f); 
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].diffuse"), 0.8f, 0.8f, 0.8f);
         glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].specular"), 1.0f, 1.0f, 1.0f);
         // Constantes fisicas para que la luz viaje unos 50 metros antes de apagarse
         glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].constant"), 1.0f);
@@ -717,9 +738,9 @@ void update(float deltaTime) override {
         // Posicion inicial ajustable
         glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].position"), -2.0f, 2.0f, -2.0f);
         glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].ambient"), 0.05f, 0.05f, 0.05f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].diffuse"), 0.8f, 0.8f, 0.8f); 
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].diffuse"), 0.8f, 0.8f, 0.8f);
         glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].specular"), 1.0f, 1.0f, 1.0f);
-        
+
         glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].constant"), 1.0f);
         glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].linear"), 0.09f);
         glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].quadratic"), 0.032f);
@@ -736,8 +757,8 @@ void update(float deltaTime) override {
         glUniform3f(glGetUniformLocation(shaderProgram, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
         glUniform3f(glGetUniformLocation(shaderProgram, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
         glUniform3f(glGetUniformLocation(shaderProgram, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
-        
-        
+
+
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(proj));
 
@@ -748,7 +769,7 @@ void update(float deltaTime) override {
             }
         }
 
-		// Renderizar solo mallas transparentes
+        // Renderizar solo mallas transparentes
         for (const Mesh& m : escena) {
             if (m.esTrasparente()) {
                 m.dibujar(shaderProgram);
@@ -758,14 +779,14 @@ void update(float deltaTime) override {
         // Marcado visual del triangulo
         if (objSeleccionado >= 0 && objSeleccionado < escena.size()) {
             Mesh& m = escena[objSeleccionado];
-            
+
             glDisable(GL_DEPTH_TEST);
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glLineWidth(4.0f); 
+            glLineWidth(4.0f);
 
-            glUniform4f(glGetUniformLocation(shaderProgram, "objectColor"), 1.0f, 1.0f, 0.0f, 1.0f); 
-            glUniform3f(glGetUniformLocation(shaderProgram, "ambientLight"), 1.0f, 1.0f, 1.0f); 
-            glUniform3f(glGetUniformLocation(shaderProgram, "lightColor"), 0.0f, 0.0f, 0.0f); 
+            glUniform4f(glGetUniformLocation(shaderProgram, "objectColor"), 1.0f, 1.0f, 0.0f, 1.0f);
+            glUniform3f(glGetUniformLocation(shaderProgram, "ambientLight"), 1.0f, 1.0f, 1.0f);
+            glUniform3f(glGetUniformLocation(shaderProgram, "lightColor"), 0.0f, 0.0f, 0.0f);
 
             if (modoSeleccion == 0) {
                 // Modo Global: Dibujar todas las submallas del objeto
@@ -775,7 +796,7 @@ void update(float deltaTime) override {
                     glBindVertexArray(sm.getVAO());
                     glDrawArrays(GL_TRIANGLES, 0, sm.getTotalVertices());
                 }
-            } 
+            }
             else if (modoSeleccion == 1 && subMeshSeleccionadoId != -1) {
                 // Modo Local: Dibujar solo la submalla especifica
                 for (const SubMesh& sm : m.subMeshes) {
@@ -820,21 +841,21 @@ void update(float deltaTime) override {
     }
 
     void drawUI() override {
-        
+
         // Panel General (Escena y Creacion)
         ImGui::Begin("Panel de Control 3D");
         ImGui::Text("Rendimiento: %.1f FPS", ImGui::GetIO().Framerate);
         ImGui::ColorEdit3("Color de Fondo", glm::value_ptr(clearColor));
         ImGui::Checkbox("Activar Depth Test", &depthTestActivo);
         ImGui::Checkbox("Activar Back-Face Culling", &cullFaceActivo);
-        
+
         ImGui::Separator();
-        
+
         ImGui::Text("Modo de Seleccion (Click en Pantalla):");
         ImGui::RadioButton("Global (Objeto)", &modoSeleccion, 0); ImGui::SameLine();
         ImGui::RadioButton("Local (Sub-malla)", &modoSeleccion, 1); ImGui::SameLine();
         ImGui::RadioButton("Por Triangulo", &modoSeleccion, 2);
-        
+
         ImGui::Separator();
 
         ImGui::Text("Modelo de Iluminacion:");
@@ -848,7 +869,7 @@ void update(float deltaTime) override {
             emitirParticulas = !emitirParticulas;
         }
         if (emitirParticulas) {
-            
+
             ImGui::SliderFloat("Tamaño Inicial", &particleSystem->Config.startSize, 0.01f, 1.0f);
             ImGui::DragFloat3("Posicion", glm::value_ptr(*emisorPos), 0.05f);
             ImGui::SliderFloat("Apertura Cono", &particleSystem->Config.coneSpread, 0.0f, 5.0f);
@@ -859,7 +880,7 @@ void update(float deltaTime) override {
             ImGui::SliderInt("Direccion", &particleSystem->Config.direction, 0, 5);
             // La cantidad de partículas por frame también la puedes controlar dinámicamente aquí
             ImGui::SliderInt("Tasa de Emisión", &particlesPerFrame, 0, 50);
-            
+
         }
 
         ImGui::Separator();
@@ -905,14 +926,14 @@ void update(float deltaTime) override {
             }
         }
         ImGui::Dummy(ImVec2(0.0f, 10.0f)); // Espaciado
-        
+
         if (ImGui::Button("Borrar Escena Completa", ImVec2(-1, 0))) {
             for (Mesh& m : escena) m.limpiarGPU();
             escena.clear();
             objSeleccionado = -1;
-        } 
-        
-        ImGui::End(); 
+        }
+
+        ImGui::End();
         // Inspector de objetos (Solo visible si hay seleccion)
 
         if (!escena.empty() && objSeleccionado >= 0 && objSeleccionado < static_cast<int>(escena.size())) {
@@ -962,17 +983,17 @@ void update(float deltaTime) override {
 
         // Cargado y guardado de escena
         ImGui::Begin("Guardar y Cargar Escena");
-        
+
         static char nombreArchivoGuardar[64] = "mi_escena";
         ImGui::InputText(".json", nombreArchivoGuardar, IM_ARRAYSIZE(nombreArchivoGuardar));
         ImGui::SameLine();
         if (ImGui::Button("Guardar Archivo")) {
             guardarEscena(std::string(nombreArchivoGuardar));
         }
-        
+
         ImGui::Separator();
         ImGui::Text("Archivos Guardados (Saves/):");
-        
+
         // Leer la carpeta nativamente 
         if (fs::exists("Saves")) {
             for (const auto& entry : fs::directory_iterator("Saves")) {

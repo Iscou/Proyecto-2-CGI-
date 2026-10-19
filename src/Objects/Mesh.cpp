@@ -126,17 +126,36 @@ Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, float lado, float alpha) {
         {-h,-h, h}, {h,-h, h}, {h,h, h}, {-h,h, h}
     };
     std::vector<Triangle> tris = {
-        Triangle(p[4], p[5], p[6]), Triangle(p[4], p[6], p[7]), // Frente
-        Triangle(p[1], p[0], p[3]), Triangle(p[1], p[3], p[2]), // Atras
-        Triangle(p[0], p[4], p[7]), Triangle(p[0], p[7], p[3]), // Izquierda
-        Triangle(p[5], p[1], p[2]), Triangle(p[5], p[2], p[6]), // Derecha
-        Triangle(p[7], p[6], p[2]), Triangle(p[7], p[2], p[3]), // Arriba
-        Triangle(p[0], p[1], p[5]), Triangle(p[0], p[5], p[4])  // Abajo
+        // Cara Frontal (Z = h)
+        Triangle(p[4],  p[5],  p[6], glm::vec2(0.0f, 0.0f), glm::vec2(1.0f, 0.0f), glm::vec2(1.0f, 1.0f)),
+        Triangle(p[4],  p[6],  p[7], glm::vec2(0.0f, 0.0f),   glm::vec2(1.0f, 1.0f), glm::vec2(0.0f, 1.0f)),
+
+        // Cara Trasera (Z = -h)
+        Triangle(p[1],  p[0],  p[3], glm::vec2(0.0f, 0.0f), glm::vec2(1.0f, 0.0f), glm::vec2(1.0f, 1.0f)),
+        Triangle(p[1],  p[3],  p[2], glm::vec2(0.0f, 0.0f),   glm::vec2(1.0f, 1.0f), glm::vec2(0.0f, 1.0f)),
+
+        // Cara Izquierda (X = -h)
+        Triangle(p[0],  p[4],  p[7], glm::vec2(0.0f, 0.0f), glm::vec2(1.0f, 0.0f), glm::vec2(1.0f, 1.0f)),
+        Triangle(p[0],  p[7],  p[3], glm::vec2(0.0f, 0.0f),   glm::vec2(1.0f, 1.0f), glm::vec2(0.0f, 1.0f)),
+
+        // Cara Derecha (X = h)
+        Triangle(p[5], p[1], p[2], glm::vec2(0.0f, 0.0f),   glm::vec2(1.0f, 0.0f), glm::vec2(1.0f, 1.0f)),
+        Triangle(p[5], p[2], p[6], glm::vec2(0.0f, 0.0f),  glm::vec2(1.0f, 1.0f),  glm::vec2(0.0f, 1.0f)),
+
+        // Cara Superior (Y = h)
+        Triangle(p[7], p[6], p[2], glm::vec2(0.0f, 0.0f),  glm::vec2(1.0f, 0.0f),  glm::vec2(1.0f, 1.0f)),
+        Triangle(p[7], p[2], p[3], glm::vec2(0.0f, 0.0f),   glm::vec2(1.0f, 1.0f), glm::vec2(0.0f, 1.0f)),
+
+        // Cara Inferior (Y = -h)
+        Triangle(p[0],  p[1],  p[5], glm::vec2(0.0f, 0.0f), glm::vec2(1.0f, 0.0f), glm::vec2(1.0f, 1.0f)),
+        Triangle(p[0],  p[5],  p[4], glm::vec2(0.0f, 0.0f),   glm::vec2(1.0f, 1.0f), glm::vec2(0.0f, 1.0f))
     };
 
     // Pasamos el canal Alpha al glm::vec4 de la SubMesh
     glm::vec4 colorBase = glm::vec4(0.2f, 0.6f, 0.9f, alpha);
     SubMesh sm(idSubMesh, tris, colorBase);
+
+    sm.hasTexture = true;
 
     sm.calcularNormalesPromediadas();
     sm.subirAGPU();
