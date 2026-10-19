@@ -118,7 +118,7 @@ void Mesh::limpiarGPU() {
 }
 
 // Primitivas parametrizables
-Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, float lado, float alpha) {
+Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, TexturaInfo ti, float lado, float alpha) {
     Mesh m(idObjeto, "Cubo_" + std::to_string(idObjeto));
     float h = lado * 0.5f;
     glm::vec3 p[8] = {
@@ -155,7 +155,8 @@ Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, float lado, float alpha) {
     glm::vec4 colorBase = glm::vec4(0.2f, 0.6f, 0.9f, alpha);
     SubMesh sm(idSubMesh, tris, colorBase);
 
-    sm.hasTexture = true;
+    sm.hasTexture = ti.tieneTextura;
+    if(ti.tieneTextura) sm.textureID = cargarTextura(ti.ruta);
 
     sm.calcularNormalesPromediadas();
     sm.subirAGPU();
@@ -165,7 +166,7 @@ Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, float lado, float alpha) {
     return m;
 }
 
-Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, float base, float altura, float alpha) {
+Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, TexturaInfo ti, float base, float altura, float alpha) {
     Mesh m(idObjeto, "Piramide_" + std::to_string(idObjeto));
     float h = base * 0.5f;
     float yMin = -altura * 0.5f, yMax = altura * 0.5f;

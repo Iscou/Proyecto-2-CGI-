@@ -277,6 +277,10 @@ private:
     bool emitirParticulas = false;
     int particlesPerFrame = 5;
 
+    // Texturas
+    TexturaInfo textActual;
+    bool tieneTextura = false;
+
     // Rutas del skybox 
     std::vector<std::string> carasCielo = {
         "assets/skybox/right.jpg",
@@ -884,16 +888,32 @@ public:
         }
 
         ImGui::Separator();
+        ImGui::Text("Texturas:");
+        if (ImGui::Button("Crear objeto con textura")) {
+            tieneTextura = !tieneTextura;
+            textActual.tieneTextura = tieneTextura;
+
+            std::cout << "Ingresa el nombre de la textura. Ej: 'hola.png': ";
+            std::cin >> textActual.ruta;
+            std::string rutaCompleta = "assets/textures/" + textActual.ruta;
+            std::ifstream file(rutaCompleta);
+            if (!file.is_open()) {
+                std::cerr << "Error: La textura no se encuentra en /assets/textures" << std::endl;
+                tieneTextura = false;
+            }
+        }
+        if(tieneTextura) ImGui::Text("Activado: %s", textActual.ruta.c_str());
+        ImGui::Separator();
 
         ImGui::Text("Insertar Figuras:");
         if (ImGui::Button("Cubo")) {
-            escena.push_back(Mesh::crearCubo(contadorID, contadorID));
+            escena.push_back(Mesh::crearCubo(contadorID, contadorID, textActual));
             objSeleccionado = static_cast<int>(escena.size()) - 1;
             contadorID++;
         }
         ImGui::SameLine();
         if (ImGui::Button("Piramide")) {
-            escena.push_back(Mesh::crearPiramide(contadorID, contadorID));
+            escena.push_back(Mesh::crearPiramide(contadorID, contadorID, textActual));
             objSeleccionado = static_cast<int>(escena.size()) - 1;
             contadorID++;
         }

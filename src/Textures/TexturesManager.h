@@ -6,4 +6,9 @@
 #include <glad/glad.h>
 #include <glm/gtc/matrix_transform.hpp>
 
+struct TexturaInfo {
+	std::string ruta;
+	bool tieneTextura;
+};
+
 GLuint cargarTextura(const std::string& ruta);

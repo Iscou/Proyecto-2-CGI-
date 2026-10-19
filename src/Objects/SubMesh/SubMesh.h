@@ -31,7 +31,7 @@ public:
     glm::vec3 rotacion = glm::vec3(0.0f, 0.0f, 0.0f);    // Grados en X, Y, Z
     glm::vec3 escala   = glm::vec3(1.0f, 1.0f, 1.0f);
 
-    GLuint textureID = cargarTextura("images.jpg"); // ID de la textura cargada desde archivo (si es un OBJ)
+    GLuint textureID = 0; // ID de la textura cargada desde archivo (si es un OBJ)
     bool hasTexture = false;   // Bandera para saber si usa textura o color plano
 
     // Constructores
