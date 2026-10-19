@@ -153,6 +153,7 @@ Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, TexturaInfo ti, float lado, fl
 
     // Pasamos el canal Alpha al glm::vec4 de la SubMesh
     glm::vec4 colorBase = glm::vec4(0.2f, 0.6f, 0.9f, alpha);
+    if(ti.tieneTextura) colorBase = glm::vec4(1.0f, 1.0f, 1.0f, alpha);
     SubMesh sm(idSubMesh, tris, colorBase);
 
     sm.hasTexture = ti.tieneTextura;
@@ -193,6 +194,7 @@ Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, TexturaInfo ti, float base
 
     // Pasamos el canal Alpha al glm::vec4 de la SubMesh
     glm::vec4 colorBase = glm::vec4(0.9f, 0.7f, 0.2f, alpha);
+    if (ti.tieneTextura) colorBase = glm::vec4(1.0f, 1.0f, 1.0f, alpha);
     SubMesh sm(idSubMesh, tris, colorBase);
 
     sm.hasTexture = ti.tieneTextura;
