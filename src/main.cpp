@@ -15,19 +15,48 @@ using json = nlohmann::json;
 // Shaders
 const char* vertexShaderSrc = R"(
 #version 330 core
+
 layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aNormal;
+layout (location = 1) in vec2 aTexCoords;
+layout (location = 2) in vec3 aNormal;
+layout (location = 3) in vec3 aTangent;
+layout (location = 4) in vec3 aBitangent;
 
+// Variables de salida hacia el Fragment Shader
 out vec3 FragPos;
-out vec3 Normal;
+out vec2 TexCoords;
+out mat3 TBN; 
 
+// Uniformes 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
 void main() {
+    // Calculamos la psoiicion del vertice en el mundod
     FragPos = vec3(model * vec4(aPos, 1.0));
-    Normal = mat3(transpose(inverse(model))) * aNormal;
+    
+    // Pasamos las coordenadas UV sin alterar
+    TexCoords = aTexCoords;
+
+    // Calculamos la Matriz Normal para rotar los vectores correctamente (Se usa la inversa transpuesta para evitar que el escalado deforme las normales)
+    mat3 normalMatrix = mat3(transpose(inverse(model)));
+    
+    // Rotamos la Tangente, Bitangente y Normal al espacio del mundo real
+    vec3 T = normalize(normalMatrix * aTangent);
+    vec3 B = normalize(normalMatrix * aBitangent);
+    vec3 N = normalize(normalMatrix * aNormal);
+    
+    // Re-ortogonalizamos (Proceso de Gram-Schmidt)
+    // Asegura que T siga siendo perfectamente perpendicular a N, incluso si el modelo fue modificado
+    T = normalize(T - dot(T, N) * N);
+    // Y recalculamos B con el producto cruz para garantizar un sistema de coordenadas perfecto
+    B = cross(N, T);
+
+    // Armamos la Matriz TBN (De espacio tangente a espacio del mundo)
+    TBN = mat3(T, B, N);
+
+    // Calculamos la posición final del vértice en la pantalla
     gl_Position = projection * view * vec4(FragPos, 1.0);
 }
 )";
@@ -35,165 +64,121 @@ void main() {
 const char* fragmentShaderSrc = R"(
 #version 330 core
 in vec3 FragPos;
-in vec3 Normal;
+in vec2 TexCoords;
+in mat3 TBN; // Recibimos la matriz rotacional desde el Vertex Shader
 
 out vec4 FragColor;
 
-// Direccional
-struct DirLight {
-    vec3 direction;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-};
+// Modelos de iluminacion 
+struct DirLight { vec3 direction; vec3 ambient; vec3 diffuse; vec3 specular; };
+struct PointLight { vec3 position; float constant; float linear; float quadratic; vec3 ambient; vec3 diffuse; vec3 specular; };
+struct SpotLight { vec3 position; vec3 direction; float cutOff; float outerCutOff; float constant; float linear; float quadratic; vec3 ambient; vec3 diffuse; vec3 specular; };
 
-// Puntual
-struct PointLight {
-    vec3 position;
-    float constant;
-    float linear;
-    float quadratic;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-};
+// Uniformes para texturizado
+uniform sampler2D texturaDifusa; // Textura de color (La foto normal)
+uniform sampler2D texturaNormal; // Normal Map (La foto violeta)
+uniform bool usarNormalMap;      // Interruptor por si el objeto no tiene Normal Map
 
-// Luz focal o interna
-struct SpotLight {
-    vec3 position;
-    vec3 direction;
-    float cutOff;
-    float outerCutOff;
-    float constant;
-    float linear;
-    float quadratic;
-    vec3 ambient;
-    vec3 diffuse;
-    vec3 specular;
-};
-
-// Las uniforme del color del objeto
-uniform vec4 objectColor;
-
-// Luz direccional (el sol del mundo)
+// Uniformes de iluminacion
 uniform DirLight dirLight;
-
-// Los points Lights que serian bombillos o punto que emiten luz
 #define NR_POINT_LIGHTS 2
 uniform PointLight pointLights[NR_POINT_LIGHTS];
-
-// Una linterna
 uniform SpotLight spotLight;
+uniform vec3 viewPos;
+uniform int modoIluminacion;
 
-// Datos extra para los calculos
-uniform vec3 viewPos; // Posicion de la camara (necesario para el brillo intenso de Blinn Phong)
-uniform int modoIluminacion; // 0 es Flat, 1 Lambert y 2 Blinn-Phong
-
-// Funciones para las luces
-vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir);
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir);
+// Metodos para calcular los distintos modelos de iluminacion
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 colorObjeto);
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 colorObjeto);
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 colorObjeto);
 
 void main() {
-    // Definimos la normal que es necesaria para los 3 modelos
+    // Obtener el color base leyendo la imagen
+    vec4 texColor = texture(texturaDifusa, TexCoords);
+    if(texColor.a < 0.1) discard; // Por si hay transparencia (como mallas de alambre)
+
+    // Preparar la Normal
     vec3 norm;
-    if (modoIluminacion == 0){
-        // Hacemos flat Shadding  calculando una normal cruda perpendicual al triangulo
+    if (modoIluminacion == 0) {
+        // FLAT SHADING: Ignora todo y calcula una normal plana matemática
         vec3 fdx = dFdx(FragPos);
         vec3 fdy = dFdy(FragPos);
         norm = normalize(cross(fdx, fdy));
     } else {
-        // Con Lambert y Blinn=Phong se normaliza la normal que viene
-        norm = normalize(Normal);
+        // LAMBERT Y BLINN-PHONG
+        if (usarNormalMap) {
+            // Leer el color violeta del mapa (valores de 0.0 a 1.0)
+            norm = texture(texturaNormal, TexCoords).rgb;
+            // Transformar ese color al rango de vectores [-1.0 a 1.0]
+            norm = normalize(norm * 2.0 - 1.0);
+            // Multiplicar por TBN para rotar la normal falsa al mundo real
+            norm = normalize(TBN * norm);
+        } else {
+            // Si el objeto no tiene Normal Map, usamos la normal real (La columna Z de TBN)
+            norm = normalize(TBN[2]);
+        }
     }
 
-    // Sacamos la direccion que esta la camara con respecto al pixel del punto
     vec3 viewDir = normalize(viewPos - FragPos);
-    
-    // Inicizalizamos el pixel negro
     vec3 result = vec3(0.0);
 
-    // Sumamos el aporte de la luz direccional
-    result += CalcDirLight(dirLight, norm, viewDir);
-    
-    // Ahora cada uno de los pointLights
+    // Sumar luces enviando la nueva normal rugosa y el color de la textura
+    result += CalcDirLight(dirLight, norm, viewDir, texColor.rgb);
     for(int i = 0; i < NR_POINT_LIGHTS; i++) {
-        result += CalcPointLight(pointLights[i], norm, FragPos, viewDir);    
+        result += CalcPointLight(pointLights[i], norm, FragPos, viewDir, texColor.rgb);    
     }
+    result += CalcSpotLight(spotLight, norm, FragPos, viewDir, texColor.rgb);    
     
-    // Ahora el spotlight
-    result += CalcSpotLight(spotLight, norm, FragPos, viewDir);    
-    
-    // Instanciamos el color final obtenido
-    FragColor = vec4(result, objectColor.a);
+    FragColor = vec4(result, texColor.a);
 }
 
-vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir) {
+// Definicion de las funciones de los modelos de iluminacion
+vec3 CalcDirLight(DirLight light, vec3 normal, vec3 viewDir, vec3 colorObjeto) {
     vec3 lightDir = normalize(-light.direction);
-    
-    // Ambiental
-    vec3 ambient = light.ambient * objectColor.rgb;
-    
-    // Difusa
+    vec3 ambient = light.ambient * colorObjeto;
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * diff * objectColor.rgb;
-    
-    // Espular en blinn-phong
+    vec3 diffuse = light.diffuse * diff * colorObjeto;
     vec3 specular = vec3(0.0);
     if (modoIluminacion == 2) {
         vec3 halfwayDir = normalize(lightDir + viewDir);  
-        float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0); // 32.0 es el nivel de pulido
-        specular = light.specular * spec * objectColor.rgb;
+        float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
+        specular = light.specular * spec * colorObjeto;
     }
-    
     return (ambient + diffuse + specular);
 }
 
-vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir) {
+vec3 CalcPointLight(PointLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 colorObjeto) {
     vec3 lightDir = normalize(light.position - fragPos);
-    
-    vec3 ambient = light.ambient * objectColor.rgb;
-    
+    vec3 ambient = light.ambient * colorObjeto;
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * diff * objectColor.rgb;
-    
+    vec3 diffuse = light.diffuse * diff * colorObjeto;
     vec3 specular = vec3(0.0);
     if (modoIluminacion == 2) {
         vec3 halfwayDir = normalize(lightDir + viewDir);  
         float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
-        specular = light.specular * spec * objectColor.rgb;
+        specular = light.specular * spec * colorObjeto;
     }
-    
-    // Atenuación por distancia
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
-    
     return (ambient + diffuse + specular) * attenuation;
 }
 
-vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir) {
+vec3 CalcSpotLight(SpotLight light, vec3 normal, vec3 fragPos, vec3 viewDir, vec3 colorObjeto) {
     vec3 lightDir = normalize(light.position - fragPos);
-    
     float diff = max(dot(normal, lightDir), 0.0);
-    vec3 diffuse = light.diffuse * diff * objectColor.rgb;
-    
+    vec3 diffuse = light.diffuse * diff * colorObjeto;
     vec3 specular = vec3(0.0);
     if (modoIluminacion == 2) {
         vec3 halfwayDir = normalize(lightDir + viewDir);  
         float spec = pow(max(dot(normal, halfwayDir), 0.0), 32.0);
-        specular = light.specular * spec * objectColor.rgb;
+        specular = light.specular * spec * colorObjeto;
     }
-    
-    // Suavizado de los bordes del cono de luz
     float theta = dot(lightDir, normalize(-light.direction)); 
     float epsilon = light.cutOff - light.outerCutOff;
     float intensity = clamp((theta - light.outerCutOff) / epsilon, 0.0, 1.0);
-    
-    // Atenuacion por distancia
     float distance = length(light.position - fragPos);
     float attenuation = 1.0 / (light.constant + light.linear * distance + light.quadratic * (distance * distance));    
-    
-    vec3 ambient = light.ambient * objectColor.rgb;
+    vec3 ambient = light.ambient * colorObjeto;
     return ambient * attenuation + (diffuse + specular) * attenuation * intensity;
 }
 )";

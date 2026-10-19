@@ -52,4 +52,11 @@ public:
 
     GLuint getVAO() const { return vao; }
     int getTotalVertices() const { return totalVertices; }
+
+    // ID texturas 
+    GLuint texturaDifusaID = 0; 
+    GLuint texturaNormalID = 0;
+
+    // Bandera para el shader si debe calcular el relieve del texturizado
+    bool tieneNormalMap = false;
 };

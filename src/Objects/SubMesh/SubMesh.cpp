@@ -59,26 +59,46 @@ void SubMesh::subirAGPU() {
     std::vector<float> datosLineasNormales;
     const float LONGITUD_NORMAL = 0.12f; // Largo visual de la linea de normal
 
-    for (const Triangle& t : triangles) {
+    for (Triangle& t : triangles) {
+        // Calculamos la tangetes y bitangentes 
+        t.calcularTangentesBitangentes();
+
         // Asegurar que las normales esten normalizadas al cargar
         glm::vec3 n1 = (glm::length(t.vn1) > 1e-6f) ? glm::normalize(t.vn1) : glm::vec3(0.0f, 1.0f, 0.0f);
         glm::vec3 n2 = (glm::length(t.vn2) > 1e-6f) ? glm::normalize(t.vn2) : glm::vec3(0.0f, 1.0f, 0.0f);
         glm::vec3 n3 = (glm::length(t.vn3) > 1e-6f) ? glm::normalize(t.vn3) : glm::vec3(0.0f, 1.0f, 0.0f);
 
-        // Empaqueta los 3 vertices del triangulo (Posicion + Normal) 
+        // Empaqueta los 3 vertices del triangulo (Posicion + Normal + UV + Tangente + Bitangente) 
         glm::vec3 verts[3] = { t.v1, t.v2, t.v3 };
+        glm::vec2 uvs[3]   = { t.uv1, t.uv2, t.uv3 };
         glm::vec3 norms[3] = { n1, n2, n3 };
+        glm::vec3 tans[3]  = { t.tan1, t.tan2, t.tan3 };
+        glm::vec3 bitans[3]= { t.bitan1, t.bitan2, t.bitan3 };
 
         for (int i = 0; i < 3; ++i) {
+            // Empaquetamos los 14 floats en estricto orden vertical
             datosTriangulos.push_back(verts[i].x);
             datosTriangulos.push_back(verts[i].y);
             datosTriangulos.push_back(verts[i].z);
+            
+            datosTriangulos.push_back(uvs[i].x);
+            datosTriangulos.push_back(uvs[i].y);
+            
             datosTriangulos.push_back(norms[i].x);
             datosTriangulos.push_back(norms[i].y);
             datosTriangulos.push_back(norms[i].z);
+            
+            datosTriangulos.push_back(tans[i].x);
+            datosTriangulos.push_back(tans[i].y);
+            datosTriangulos.push_back(tans[i].z);
+            
+            datosTriangulos.push_back(bitans[i].x);
+            datosTriangulos.push_back(bitans[i].y);
+            datosTriangulos.push_back(bitans[i].z);
 
             // Empaqueta el segmento de linea para visualizar la normal (v -> v + n*L)
             glm::vec3 punta = verts[i] + norms[i] * LONGITUD_NORMAL;
+            
             // Punto inicial de la linea
             datosLineasNormales.push_back(verts[i].x);
             datosLineasNormales.push_back(verts[i].y);
@@ -86,6 +106,7 @@ void SubMesh::subirAGPU() {
             datosLineasNormales.push_back(norms[i].x);
             datosLineasNormales.push_back(norms[i].y);
             datosLineasNormales.push_back(norms[i].z);
+            
             // Punto final de la linea
             datosLineasNormales.push_back(punta.x);
             datosLineasNormales.push_back(punta.y);
@@ -106,10 +127,23 @@ void SubMesh::subirAGPU() {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, datosTriangulos.size() * sizeof(float), datosTriangulos.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    int stride = 14 * sizeof(float); 
+    
+    // Posición (Loc=0)
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    // Coordenadas UV (Loc=1)
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
+    // Normal (Loc=2)
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)(5 * sizeof(float)));
+    glEnableVertexAttribArray(2);
+    // Tangente (Loc=3)
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, stride, (void*)(8 * sizeof(float)));
+    glEnableVertexAttribArray(3);
+    // Bitangente (Loc=4)
+    glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, stride, (void*)(11 * sizeof(float)));
+    glEnableVertexAttribArray(4);
 
     // Sube VAO y VBO de las Lineas de Normales
     glGenVertexArrays(1, &vaoNormales);
@@ -152,7 +186,22 @@ void SubMesh::dibujar(GLuint shaderProgram, const glm::mat4& matrizPadre,
     // La transformacion del Objeto Padre afecta a esta SubMalla: M_final = M_padre * M_local
     glm::mat4 modelFinal = matrizPadre * getMatrizLocal();
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelFinal));
+    
+    // El color fallback en caso de que la textura falle
     glUniform4fv(glGetUniformLocation(shaderProgram, "objectColor"), 1, glm::value_ptr(color));
+
+    // Vinculamos la Textura Difusa en la Ranura 0
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texturaDifusaID);
+    glUniform1i(glGetUniformLocation(shaderProgram, "texturaDifusa"), 0);
+
+    // Vinculamos el Normal Map en la Ranura 1
+    glActiveTexture(GL_TEXTURE1);
+    glBindTexture(GL_TEXTURE_2D, texturaNormalID);
+    glUniform1i(glGetUniformLocation(shaderProgram, "texturaNormal"), 1);
+
+    // Le avisamos al shader si debe ejecutar la matematica TBN
+    glUniform1i(glGetUniformLocation(shaderProgram, "usarNormalMap"), tieneNormalMap);
 
     // Dibuja la malla principal
     if (verWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);

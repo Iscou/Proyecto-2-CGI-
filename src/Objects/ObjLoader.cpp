@@ -135,15 +135,16 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
         for (size_t f = 0; f < shape.mesh.num_face_vertices.size(); f++) {
             size_t fv = shape.mesh.num_face_vertices[f];
 
-            // Asumimos triangulación (fv == 3)
+            // Asumimos triangulacion (fv == 3)
             if (fv == 3) {
                 glm::vec3 pos[3];
+                glm::vec2 uv[3]; // Coordenadas UV para el normal mapping
                 glm::vec3 norm[3];
 
                 for (size_t v = 0; v < 3; v++) {
                     tinyobj::index_t idx = shape.mesh.indices[index_offset + v];
 
-                    // Extraer posición
+                    // Extraer posicion
                     pos[v] = glm::vec3(
                         attrib.vertices[3 * idx.vertex_index + 0],
                         attrib.vertices[3 * idx.vertex_index + 1],
@@ -153,6 +154,16 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
                     // Actualizar Bounding Box global del mesh
                     m.minBounds = glm::min(m.minBounds, pos[v]);
                     m.maxBounds = glm::max(m.maxBounds, pos[v]);
+
+                    // Extraer UV 
+                    if (idx.texcoord_index >= 0) {
+                        uv[v] = glm::vec2(
+                            attrib.texcoords[2 * idx.texcoord_index + 0],
+                            attrib.texcoords[2 * idx.texcoord_index + 1]
+                        );
+                    } else {
+                        uv[v] = glm::vec2(0.0f, 0.0f); // Por si el .obj no trae texturas
+                    }
 
                     // Extraer Normal (si existe en el .obj)
                     if (idx.normal_index >= 0) {
@@ -187,7 +198,7 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
                 }
 
                 // Crear el triángulo
-                tris.push_back(Triangle(pos[0], pos[1], pos[2], norm[0], norm[1], norm[2]));
+                tris.push_back(Triangle(pos[0], pos[1], pos[2], uv[0], uv[1], uv[2], norm[0], norm[1], norm[2]));
             }
 
             index_offset += fv;
