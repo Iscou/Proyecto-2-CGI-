@@ -5,6 +5,7 @@ GLuint cargarTextura(const std::string& ruta) {
     int width, height, nrChannels;
 
     std::string rutaCompleta = "assets/textures/" + ruta;
+    stbi_set_flip_vertically_on_load(true);
     unsigned char* image = stbi_load(rutaCompleta.c_str(), &width, &height, &nrChannels, 0);
 
     if (!image) {

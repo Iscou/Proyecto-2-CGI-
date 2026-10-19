@@ -890,7 +890,7 @@ public:
         ImGui::Separator();
         ImGui::Text("Texturas:");
         if (ImGui::Button("Crear objeto con textura")) {
-            tieneTextura = !tieneTextura;
+            tieneTextura = true;
             textActual.tieneTextura = tieneTextura;
 
             std::cout << "Ingresa el nombre de la textura. Ej: 'hola.png': ";
@@ -902,7 +902,14 @@ public:
                 tieneTextura = false;
             }
         }
-        if(tieneTextura) ImGui::Text("Activado: %s", textActual.ruta.c_str());
+        if (tieneTextura) { 
+            ImGui::Text("Activado: %s", textActual.ruta.c_str()); 
+            if (ImGui::Button("Desactivar")) {
+                tieneTextura = false;
+                textActual.tieneTextura = false;
+                textActual.ruta = "";
+            }
+        }
         ImGui::Separator();
 
         ImGui::Text("Insertar Figuras:");

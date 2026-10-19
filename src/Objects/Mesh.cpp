@@ -173,15 +173,30 @@ Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, TexturaInfo ti, float base
     glm::vec3 punta(0.0f, yMax, 0.0f);
     glm::vec3 b0(-h, yMin,  h), b1(h, yMin,  h), b2(h, yMin, -h), b3(-h, yMin, -h);
 
+    const glm::vec2 uvL(0.0f, 0.0f);   
+    const glm::vec2 uvR(1.0f, 0.0f);   
+    const glm::vec2 uvT(0.5f, 1.0f);   
+
+    const glm::vec2 uvB0(0.0f, 1.0f);  
+    const glm::vec2 uvB1(1.0f, 1.0f);  
+    const glm::vec2 uvB2(1.0f, 0.0f);  
+    const glm::vec2 uvB3(0.0f, 0.0f);  
+
     std::vector<Triangle> tris = {
-        Triangle(b0, b1, punta), Triangle(b1, b2, punta),
-        Triangle(b2, b3, punta), Triangle(b3, b0, punta),
-        Triangle(b0, b3, b2),    Triangle(b0, b2, b1) // Base cuadrada
+        Triangle(b0, b1, punta, uvL, uvR, uvT), 
+        Triangle(b1, b2, punta, uvL, uvR, uvT),
+        Triangle(b2, b3, punta, uvL, uvR, uvT),
+        Triangle(b3, b0, punta, uvL, uvR, uvT),
+        Triangle(b0, b3, b2, uvB0, uvB3, uvB2),
+        Triangle(b0, b2, b1, uvB0, uvB2, uvB1) // Base cuadrada
     };
 
     // Pasamos el canal Alpha al glm::vec4 de la SubMesh
     glm::vec4 colorBase = glm::vec4(0.9f, 0.7f, 0.2f, alpha);
     SubMesh sm(idSubMesh, tris, colorBase);
+
+    sm.hasTexture = ti.tieneTextura;
+    if (ti.tieneTextura) sm.textureID = cargarTextura(ti.ruta);
 
     sm.calcularNormalesPromediadas();
     sm.subirAGPU();
