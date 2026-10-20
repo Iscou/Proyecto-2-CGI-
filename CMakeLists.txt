@@ -19,7 +19,7 @@ FetchContent_MakeAvailable(glfw)
 
 # Descargar GLM automaticamente
 FetchContent_Declare(
-    glm
+    glm 
     GIT_REPOSITORY https://github.com/g-truc/glm.git
     GIT_TAG 1.0.1
 )
@@ -84,8 +84,8 @@ file(GLOB_RECURSE PROJECT_SOURCES
 add_executable(proyecto2
     ${PROJECT_SOURCES}
     ${IMGUI_SOURCES}
-)
-
+)    
+  
 # Copia la carpeta assets exactamente al lado del ejecutable (.exe)
 add_custom_command(TARGET proyecto2 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -93,7 +93,7 @@ add_custom_command(TARGET proyecto2 POST_BUILD
     "$<TARGET_FILE_DIR:proyecto2>/assets"
 )
 
-# Descargar nlohmann/json automaticamente
+# Descargar nlohmann/json automaticamente     
 FetchContent_Declare(
     json
     GIT_REPOSITORY https://github.com/nlohmann/json.git
@@ -102,4 +102,4 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json)
 
 # Enlazar librerias (ahora usamos 'glfw' que es el target que descarga FetchContent)
-target_link_libraries(proyecto2 glfw opengl32 nlohmann_json::nlohmann_json)
+target_link_libraries(proyecto2 glfw opengl32 nlohmann_json::nlohmann_json) 

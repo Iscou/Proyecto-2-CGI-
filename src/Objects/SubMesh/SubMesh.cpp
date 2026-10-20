@@ -60,7 +60,7 @@ void SubMesh::subirAGPU() {
     const float LONGITUD_NORMAL = 0.12f; // Largo visual de la linea de normal
 
     for (Triangle& t : triangles) {
-        // Calculamos la tangetes y bitangentes 
+        // Calculamos las tangentes y bitangentes 
         t.calcularTangentesBitangentes();
 
         // Asegurar que las normales esten normalizadas al cargar
@@ -68,9 +68,9 @@ void SubMesh::subirAGPU() {
         glm::vec3 n2 = (glm::length(t.vn2) > 1e-6f) ? glm::normalize(t.vn2) : glm::vec3(0.0f, 1.0f, 0.0f);
         glm::vec3 n3 = (glm::length(t.vn3) > 1e-6f) ? glm::normalize(t.vn3) : glm::vec3(0.0f, 1.0f, 0.0f);
 
-        // Empaqueta los 3 vertices del triangulo (Posicion + Normal + UV + Tangente + Bitangente) 
+        // Empaqueta los 3 vertices del triangulo (Posicion + UV + Normal + Tangente + Bitangente) 
         glm::vec3 verts[3] = { t.v1, t.v2, t.v3 };
-        glm::vec2 uvs[3]   = { t.uv1, t.uv2, t.uv3 };
+        glm::vec2 uvs[3]   = { t.vt1, t.vt2, t.vt3 }; // Adaptado a la variable de tu compañero
         glm::vec3 norms[3] = { n1, n2, n3 };
         glm::vec3 tans[3]  = { t.tan1, t.tan2, t.tan3 };
         glm::vec3 bitans[3]= { t.bitan1, t.bitan2, t.bitan3 };
@@ -127,21 +127,22 @@ void SubMesh::subirAGPU() {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, datosTriangulos.size() * sizeof(float), datosTriangulos.data(), GL_STATIC_DRAW);
 
-    int stride = 14 * sizeof(float); 
+    // Unico Stride válido: 14 floats
+    GLsizei stride = 14 * sizeof(float); 
     
-    // Posición (Loc=0)
+    // Posición (Loc=0, 3 floats)
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (void*)0);
     glEnableVertexAttribArray(0);
-    // Coordenadas UV (Loc=1)
+    // Coordenadas UV (Loc=1, 2 floats)
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, stride, (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
-    // Normal (Loc=2)
+    // Normal (Loc=2, 3 floats)
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, stride, (void*)(5 * sizeof(float)));
     glEnableVertexAttribArray(2);
-    // Tangente (Loc=3)
+    // Tangente (Loc=3, 3 floats)
     glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, stride, (void*)(8 * sizeof(float)));
     glEnableVertexAttribArray(3);
-    // Bitangente (Loc=4)
+    // Bitangente (Loc=4, 3 floats)
     glVertexAttribPointer(4, 3, GL_FLOAT, GL_FALSE, stride, (void*)(11 * sizeof(float)));
     glEnableVertexAttribArray(4);
 
@@ -152,9 +153,10 @@ void SubMesh::subirAGPU() {
     glBindBuffer(GL_ARRAY_BUFFER, vboNormales);
     glBufferData(GL_ARRAY_BUFFER, datosLineasNormales.size() * sizeof(float), datosLineasNormales.data(), GL_STATIC_DRAW);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    GLsizei strideNormales = 6 * sizeof(float);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, strideNormales, (void*)0);
     glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, strideNormales, (void*)(3 * sizeof(float)));
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
@@ -190,18 +192,21 @@ void SubMesh::dibujar(GLuint shaderProgram, const glm::mat4& matrizPadre,
     // El color fallback en caso de que la textura falle
     glUniform4fv(glGetUniformLocation(shaderProgram, "objectColor"), 1, glm::value_ptr(color));
 
-    // Vinculamos la Textura Difusa en la Ranura 0
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texturaDifusaID);
-    glUniform1i(glGetUniformLocation(shaderProgram, "texturaDifusa"), 0);
+    // Textura Difusa (
+    glUniform1i(glGetUniformLocation(shaderProgram, "hasTexture"), hasTexture ? 1 : 0);
+    if (hasTexture) {
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texturaDifusaID); 
+        glUniform1i(glGetUniformLocation(shaderProgram, "ourTexture"), 0);
+    }
 
-    // Vinculamos el Normal Map en la Ranura 1
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, texturaNormalID);
-    glUniform1i(glGetUniformLocation(shaderProgram, "texturaNormal"), 1);
-
-    // Le avisamos al shader si debe ejecutar la matematica TBN
-    glUniform1i(glGetUniformLocation(shaderProgram, "usarNormalMap"), tieneNormalMap);
+    // Textura Normal Map (La tuya)
+    glUniform1i(glGetUniformLocation(shaderProgram, "usarNormalMap"), tieneNormalMap ? 1 : 0);
+    if (tieneNormalMap) {
+        glActiveTexture(GL_TEXTURE1);
+        glBindTexture(GL_TEXTURE_2D, texturaNormalID);
+        glUniform1i(glGetUniformLocation(shaderProgram, "texturaNormal"), 1);
+    }
 
     // Dibuja la malla principal
     if (verWireframe) glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
