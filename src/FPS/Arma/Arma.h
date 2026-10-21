@@ -3,6 +3,7 @@
 #include "AABB.h"
 #include "Mesh.h"
 #include "Bala.h"
+#include "../../Camera/camera.h"
 
 class Arma {
 private:
@@ -38,7 +39,27 @@ public:
         }
     }
 
-    Bala disparar(glm::vec3 direccionApuntado); 
+    Bala* disparar(glm::vec3 direccionApuntado) {
 
-    void desplazarModelo(glm::vec3 dir, float velocidad);
+        if (balasRestantes == 0) {
+            return NULL;
+        }
+
+        Bala* balaDisparada = new Bala(*bala);
+        balaDisparada->actualizarDir(direccionApuntado);
+        balasRestantes--;
+
+        return balaDisparada;
+    }
+
+    void desplazarModelo(Camera cam, float velocidad) {
+        float offsetFrente = 0.5f;  // Qué tan adelante está la pistola respecto a los ojos
+        float offsetDerecha = 0.3f;  // Qué tan a la derecha está
+        float offsetAbajo = -0.1f; // Qué tan abajo está
+
+        posicion = cam.position +
+            (cam.front * offsetFrente) +
+            (cam.right * offsetDerecha) +
+            (cam.up * offserAbajo);
+    }
 };

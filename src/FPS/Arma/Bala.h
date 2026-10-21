@@ -36,12 +36,28 @@ public:
     Bala(float dmg, float velocidad, Mesh model, float multiCabeza, float multiPierna, float multiLarga, float multiMedia, float cortaDist, float mediaDist, float largaDist, glm::vec3 pos, glm::vec3 dir );
 
     // Actualizar Posicion
-    void actualizarPos(float deltaTime);
+    void actualizarPos(float deltaTime) {
+        // Calculamos la distancia 
+        float deltaDistancia = velocidad * deltaTime;
+
+        // Actualizamos la posicion
+        pos += dir * deltaDistancia;
+
+        // Acumulamos la distancia total recorrida
+        distanciaRecorrida += deltaDistancia;
+
+        // Actualizar AABB
+    }
 
     // Verificar Colision 
     void verificarColision();
 
     // Inflingir dmg
     void calcularDMGFinal();
+
+    // Cambiar direccion
+    void actualizarDir(glm::vec3 dir) {
+        this->dir = dir;
+    }
 
 };
