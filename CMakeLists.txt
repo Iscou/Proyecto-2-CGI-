@@ -78,8 +78,8 @@ file(GLOB_RECURSE PROJECT_SOURCES
     "${CMAKE_SOURCE_DIR}/src/*.c"
 )
   
-
-
+ 
+ 
 # Crear el ejecutable
 add_executable(proyecto2
     ${PROJECT_SOURCES}

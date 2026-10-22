@@ -1,3 +1,4 @@
+#pragma once
 #include "Entidad.h"
 
 // Sin valores por defecto en los parámetros de la implementación

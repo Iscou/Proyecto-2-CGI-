@@ -7,28 +7,30 @@
 
 class Arma {
 private:
-    // Propiedades del arma 
     bool semiautomatica; 
     int capacidadCargador;
     int balasRestantes;
     int balasReserva;
     Bala* bala;
 
-    // Modelo y posicion 
+    float distanciaRecorrida;
     glm::vec3 posicion;
     Mesh* modelo;
     AABB hitBox;
 
 public:
+    Arma(bool semiautomatica, int capacidadCargador, int balasReserva, Bala* bala, glm::vec3 posicion, Mesh* modelo) {
+        this->semiautomatica = semiautomatica;
+        this->capacidadCargador = capacidadCargador;
+        this->balasReserva = balasReserva;
+        this->bala = bala;
+        this->posicion = posicion;
+        this->modelo = modelo;
+    }
 
-    // Constructor
-    Arma(bool semiautomatica, int capacidadCargador, int balasReserva, Bala bala, glm::vec3 posicion, Mesh modelo);
-
-    // Declaración dentro de la clase Arma:
     void recargar() {
         int balasFaltantes = capacidadCargador - balasRestantes;
-        
-        if (balasFaltantes <= 0 || balasReserva <= 0) return; // No hace falta o no hay reserva
+        if (balasFaltantes <= 0 || balasReserva <= 0) return; 
 
         if (balasReserva >= balasFaltantes) {
             balasReserva -= balasFaltantes;
@@ -39,27 +41,39 @@ public:
         }
     }
 
-    Bala* disparar(glm::vec3 direccionApuntado) {
+  
 
-        if (balasRestantes == 0) {
-            return NULL;
-        }
+    Bala* disparar(glm::vec3 direccionApuntado) {
+        if (balasRestantes == 0) return nullptr;
 
         Bala* balaDisparada = new Bala(*bala);
         balaDisparada->actualizarDir(direccionApuntado);
+        
+        // Mueve la bala a la punta del cañón 
+        glm::vec3 puntoDeDisparo = this->posicion + (direccionApuntado * 0.5f);
+        balaDisparada->setPosicionInicial(puntoDeDisparo);
+        
         balasRestantes--;
-
         return balaDisparada;
     }
 
     void desplazarModelo(Camera cam, float velocidad) {
-        float offsetFrente = 0.5f;  // Qué tan adelante está la pistola respecto a los ojos
-        float offsetDerecha = 0.3f;  // Qué tan a la derecha está
-        float offsetAbajo = -0.1f; // Qué tan abajo está
+        // Coordenadas ajustadas para una vista FPS clasica
+        float offsetFrente = 0.35f;  
+        float offsetDerecha = 0.15f;  
+        float offsetAbajo = -0.15f; 
 
         posicion = cam.position +
             (cam.front * offsetFrente) +
             (cam.right * offsetDerecha) +
-            (cam.up * offserAbajo);
+            (cam.up * offsetAbajo);
+
+        modelo->position = posicion;
+        
+        float correccionYaw = 180.0f; 
+        modelo->rotation.y = -cam.yaw + correccionYaw;
+        modelo->rotation.x = cam.pitch;
     }
+
+    Mesh* getModelo() { return modelo; }
 };
