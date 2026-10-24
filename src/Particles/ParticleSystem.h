@@ -32,6 +32,15 @@ public:
 
     void Update(float dt, glm::vec3 emitterPosition, unsigned int newParticlesCount);
     void Draw(GLuint shaderProgram, glm::mat4 viewMatrix, glm::mat4 projectionMatrix, glm::vec3 viewPos);
+    void setConfigParticles(float startSize,
+        float endSize,
+        float minSpeed,
+        float maxSpeed,
+        float coneSpread,
+        glm::vec4 baseColor,
+        float colorVariance = 0.5f,
+        float particleLife = 1.0f,
+        int direction = 2);
 
     ParticleConfig Config;
 

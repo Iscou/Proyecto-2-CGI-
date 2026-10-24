@@ -252,6 +252,10 @@ private:
     int puntaje = 0;
     float spawnerTimer = 0.0f;
     float tiempoAparicion = 1.5f; 
+    const float TIEMPO_LIMITE = 45.0f;
+    float tiempoLimite = TIEMPO_LIMITE;
+    bool animacionVictoria = false;
+    bool finSimulacion = false;
 
     Jugador* jugador = nullptr;
     std::vector<Bot*> botsActivos;
@@ -532,6 +536,7 @@ public:
 
             if (!juegoPausado) {
                 if (modoPractica > 0) {
+                    emitirParticulas = false; finSimulacion = false;
                     spawnerTimer += deltaTime;
                     if (spawnerTimer >= tiempoAparicion) {
                         spawnerTimer = 0.0f;
@@ -679,7 +684,25 @@ public:
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        if (emitirParticulas) particleSystem->Update(deltaTime, *emisorPos, particlesPerFrame);
+        // Si victoria
+        if (puntaje >= 100) {
+            tiempoLimite = TIEMPO_LIMITE;
+            modoPractica = 0;
+            for (Bot* bot : botsActivos) delete bot;
+            botsActivos.clear();
+            puntaje = 0;
+            emitirParticulas = true; finSimulacion = true; animacionVictoria = true;
+        }
+
+        if (emitirParticulas) {
+            if (!finSimulacion) particleSystem->Update(deltaTime, *emisorPos, particlesPerFrame);
+            else {
+                glm::vec3 down = camera.position - glm::vec3(0.0f, 0.75f, 0.0f);
+                particleSystem->Update(deltaTime, down, particlesPerFrame);
+                if (animacionVictoria) particleSystem->setConfigParticles(0.2f, 0.1f, 1.0f, 2.0f, 3.0f, glm::vec4(0.0f, 1.0f, 0.0f, 1.0f));
+                else particleSystem->setConfigParticles(0.2f, 0.1f, 0.1f, 0.5f, 3.0f, glm::vec4(1.0f, 0.0f, 0.0f, 1.0f));     
+            }
+        }
 
         glClearColor(clearColor.r, clearColor.g, clearColor.b, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -808,7 +831,7 @@ public:
                 ImGui::DragFloat3("Posicion", glm::value_ptr(*emisorPos), 0.05f);
                 ImGui::SliderFloat("Apertura Cono", &particleSystem->Config.coneSpread, 0.0f, 5.0f);
                 ImGui::SliderFloat("Velocidad Minima", &particleSystem->Config.minSpeed, 0.1f, 5.0f);
-                ImGui::SliderFloat("Velocidad Maxima", &particleSystem->Config.maxSpeed, 5.0f, 10.0f);
+                ImGui::SliderFloat("Velocidad Maxima", &particleSystem->Config.maxSpeed, 1.0f, 10.0f);
                 ImGui::ColorEdit4("Color Base", &particleSystem->Config.baseColor[0]);
                 ImGui::SliderInt("Direccion", &particleSystem->Config.direction, 0, 5);
                 ImGui::SliderInt("Tasa de Emision", &particlesPerFrame, 0, 50);
@@ -836,7 +859,22 @@ public:
                 ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
                 ImGui::SetNextWindowBgAlpha(0.3f); 
                 ImGui::Begin("HUD Shooter", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize);
+                ImGui::Text("Consigue 100pts antes de %dseg", static_cast<int>(TIEMPO_LIMITE));
                 ImGui::Text("PUNTAJE: %d", puntaje);
+                int segundos = static_cast<int>(tiempoLimite) % 60; ImGui::Text("Tiempo: %02d", segundos);
+                if (modoPractica > 0 && tiempoLimite > 0.0f)
+                {
+                    tiempoLimite -= ImGui::GetIO().DeltaTime;
+                    if (tiempoLimite <= 0.0f)
+                    {
+                        tiempoLimite = TIEMPO_LIMITE;
+                        modoPractica = 0;
+                        for (Bot* bot : botsActivos) delete bot;
+                        botsActivos.clear();
+                        puntaje = 0;
+                        emitirParticulas = true; finSimulacion = true; animacionVictoria = false;
+                    }
+                }
                 ImGui::Text("Pulsa ESC para Pausar");
                 ImGui::End();
             } else {

@@ -164,3 +164,23 @@ void ParticleSystem::RespawnParticle(Particle& particle, glm::vec3 emitterPositi
     particle.Life = Config.particleLife;
     particle.Size = Config.startSize;
 }
+
+void ParticleSystem::setConfigParticles(float startSize,
+                                        float endSize,
+                                        float minSpeed,
+                                        float maxSpeed,
+                                        float coneSpread,
+                                        glm::vec4 baseColor,
+                                        float colorVariance,
+                                        float particleLife,
+                                        int direction) {
+    Config.startSize = startSize;
+    Config.endSize = endSize;
+    Config.minSpeed = minSpeed;
+    Config.maxSpeed = maxSpeed;
+    Config.coneSpread = coneSpread;
+    Config.baseColor = baseColor;
+    Config.colorVariance = colorVariance;
+    Config.particleLife = particleLife;
+    Config.direction = direction;
+}
