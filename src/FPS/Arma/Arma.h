@@ -22,6 +22,7 @@ public:
     Arma(bool semiautomatica, int capacidadCargador, int balasReserva, Bala* bala, glm::vec3 posicion, Mesh* modelo) {
         this->semiautomatica = semiautomatica;
         this->capacidadCargador = capacidadCargador;
+        this->balasRestantes = capacidadCargador;
         this->balasReserva = balasReserva;
         this->bala = bala;
         this->posicion = posicion;

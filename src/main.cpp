@@ -407,8 +407,8 @@ public:
         Mesh* modeloPistola = new Mesh(Mesh::crearOBJ(8888, "assets/models/Pistol.obj")); 
         modeloPistola->scale = glm::vec3(0.1f, 0.1f, 0.1f); 
         
-        GLuint texDifusa = cargarTextura("assets/textures/colt_low_polyfbx_m1911_BaseColor.jpg");
-        GLuint texNormal = cargarTextura("assets/textures/colt_low_polyfbx_m1911_Normal.jpg");
+        GLuint texDifusa = cargarTextura("colt_low_polyfbx_m1911_BaseColor.png");
+        GLuint texNormal = cargarTextura("colt_low_polyfbx_m1911_Normal.png");
         
         for (SubMesh& sm : modeloPistola->subMeshes) {
             sm.hasTexture = true;

@@ -34,6 +34,21 @@ private:
 
 public:
     // Constructor implementado
+    Bala(const Bala& otro)
+        : dmg(otro.dmg), velocidad(otro.velocidad),
+        multiCabeza(otro.multiCabeza), multiPierna(otro.multiPierna),
+        multiLarga(otro.multiLarga), multiMedia(otro.multiMedia),
+        cortaDist(otro.cortaDist), mediaDist(otro.mediaDist), largaDist(otro.largaDist),
+        distanciaRecorrida(0.0f), pos(otro.pos), dir(otro.dir),
+        modelo(nullptr), hitBox(otro.hitBox)
+    {
+        if (otro.modelo != nullptr) {
+            modelo = new Mesh(*otro.modelo);
+            modelo->borrame = false;
+            modelo->position = otro.modelo->position;
+        }
+    }
+
     Bala(float dmg, float velocidad, Mesh* model, float multiCabeza, float multiPierna, 
          float multiLarga, float multiMedia, float cortaDist, float mediaDist, 
          float largaDist, glm::vec3 pos, glm::vec3 dir) 
@@ -58,7 +73,7 @@ public:
         }
     }
 
-      void setPosicionInicial(glm::vec3 nuevaPos) {
+    void setPosicionInicial(glm::vec3 nuevaPos) {
         this->pos = nuevaPos;
         this->distanciaRecorrida = 0.0f; 
         if (modelo != nullptr) {
