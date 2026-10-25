@@ -316,7 +316,9 @@ Mesh Mesh::crearCilindro (int idObjeto, int idSubMesh, float radio, float altura
 }
 
 Mesh Mesh::crearOBJ(int idObjeto, const std::string& rutaArchivo) {
-    return ObjLoader::cargarOBJ(idObjeto, rutaArchivo);
+    Mesh m = ObjLoader::cargarOBJ(idObjeto, rutaArchivo);
+    m.rutaArchivo = rutaArchivo;
+    return m;
 }
 
 bool Mesh::esTrasparente() const {

@@ -391,8 +391,25 @@ private:
                 size_t pos = nombreGuardado.find('.');
                 std::string original = std::string(nombreGuardado.substr(0, pos));
                 m = Mesh::crearOBJ(contadorID, "assets/models/" + original + ".obj");
-            }
 
+                m.rutaDifusa = difusaGuardada;
+                m.rutaNormal = normalGuardada;
+
+                if (difusaGuardada != "") {
+                    GLuint texDifusa = cargarTextura(m.rutaDifusa);
+                    GLuint texNormal = cargarTextura(m.rutaNormal);
+
+                    for (SubMesh& sm : m.subMeshes) {
+                        sm.hasTexture = true;
+                        sm.texturaDifusaID = texDifusa;
+
+                        // APAGADO TEMPORALMENTE: Si ObjLoader no calcula tangentes, el Normal Map corromperá la luz y se verá negro.
+                        sm.tieneNormalMap = normalGuardada != "";
+                        sm.texturaNormalID = texNormal;
+                        sm.color = glm::vec4(1.0f);
+                    }
+                }
+            }
 
             m.position = glm::vec3(jMesh["pos"][0], jMesh["pos"][1], jMesh["pos"][2]);
             m.rotation = glm::vec3(jMesh["rot"][0], jMesh["rot"][1], jMesh["rot"][2]);
@@ -1089,7 +1106,26 @@ public:
 
                     Mesh nuevo;
                     if (actual.nombre.find("Cubo") != std::string::npos) nuevo = Mesh::crearCubo(actual.id, actual.id, textActual);
-                    else nuevo = Mesh::crearPiramide(actual.id, actual.id, textActual);
+                    else if (actual.nombre.find("Piramide") != std::string::npos) nuevo = Mesh::crearPiramide(actual.id, actual.id, textActual);
+                    else {
+                        nuevo = Mesh::crearOBJ(actual.id, actual.rutaArchivo);
+
+                        nuevo.rutaDifusa = textActual.rutaDifusa;
+                        nuevo.rutaNormal = textActual.rutaNormal;
+                        GLuint texDifusa = cargarTextura(nuevo.rutaDifusa);
+                        GLuint texNormal = cargarTextura(nuevo.rutaNormal);
+
+                        for (SubMesh& sm : nuevo.subMeshes) {
+                            sm.hasTexture = true;
+                            sm.texturaDifusaID = texDifusa;
+
+                            // APAGADO TEMPORALMENTE: Si ObjLoader no calcula tangentes, el Normal Map corromperá la luz y se verá negro.
+                            sm.tieneNormalMap = nuevo.rutaNormal != "";
+                            sm.texturaNormalID = texNormal;
+                            sm.color = glm::vec4(1.0f);
+                        }
+                        
+                    }
 
                     nuevo.scale = actual.scale;
                     nuevo.rotation = actual.rotation;
