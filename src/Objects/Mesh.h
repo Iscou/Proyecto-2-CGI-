@@ -24,6 +24,7 @@ public:
     std::string rutaArchivo = ""; 
     std::string rutaDifusa = "";
     std::string rutaNormal = "";
+    float anchoText = 1.0f; float altoText = 1.0f;
 
     // Para colisiones 
     bool esDinamico = false;

@@ -347,6 +347,7 @@ private:
             jMesh["nombre"] = m.nombre;
             jMesh["dif"] = m.rutaDifusa;
             jMesh["nor"] = m.rutaNormal;
+            jMesh["text"] = { m.anchoText, m.altoText };
             jMesh["pos"] = { m.position.x, m.position.y, m.position.z };
             jMesh["rot"] = { m.rotation.x, m.rotation.y, m.rotation.z };
             jMesh["scl"] = { m.scale.x, m.scale.y, m.scale.z };
@@ -382,7 +383,7 @@ private:
             Mesh m;
 
             // Reconstruir la figura basandose en el sufijo
-            if (nombreGuardado.find("Cubo") != std::string::npos) m = Mesh::crearCubo(contadorID, contadorID, {difusaGuardada, normalGuardada, difusaGuardada != "", normalGuardada != ""});
+            if (nombreGuardado.find("Cubo") != std::string::npos) m = Mesh::crearCubo(contadorID, contadorID, { difusaGuardada, normalGuardada, difusaGuardada != "", normalGuardada != "", jMesh["text"][0], jMesh["text"][1]});
             else if (nombreGuardado.find("Piramide") != std::string::npos) m = Mesh::crearPiramide(contadorID, contadorID, {difusaGuardada, normalGuardada, difusaGuardada != "", normalGuardada != ""});
             else if (nombreGuardado.find("Esfera") != std::string::npos) m = Mesh::crearEsfera(contadorID, contadorID);
             else if (nombreGuardado.find("Cilindro") != std::string::npos) m = Mesh::crearCilindro(contadorID, contadorID);
@@ -922,6 +923,9 @@ public:
                 textActual.tieneTextura = true;
                 tieneTextura = true;
                 
+                std::cout << "Ingresa el Ancho x Alto. Ej: '1.0 2.0': ";
+                std::cin >> textActual.ancho >> textActual.alto;
+
                 // Verificamos si la textura tiene normal Map
                 char resp;
                 std::cout << "¿Tiene Normal Map (Relieve)? (s/n): ";
@@ -1056,6 +1060,9 @@ public:
                 else {
                     textActual.tieneTextura = true;
                     tieneTextura = true;
+
+                    std::cout << "Ingresa el Ancho x Alto. Ej: '1.0 2.0': ";
+                    std::cin >> textActual.ancho >> textActual.alto;
 
                     // Verificamos si la textura tiene normal Map
                     char resp;

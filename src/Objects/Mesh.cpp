@@ -132,10 +132,13 @@ Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, TexturaInfo ti, float lado, fl
     };
 
     // Definimos las 4 esquinas de una imagen (Coordenadas UV)
+    float tileSize = 1.0f;
+    m.anchoText = ti.ancho;
+    m.altoText = ti.alto;
     glm::vec2 uv00(0.0f, 0.0f); // Abajo Izquierda
-    glm::vec2 uv10(1.0f, 0.0f); // Abajo Derecha
-    glm::vec2 uv11(1.0f, 1.0f); // Arriba Derecha
-    glm::vec2 uv01(0.0f, 1.0f); // Arriba Izquierda
+    glm::vec2 uv10(m.anchoText / tileSize, 0.0f); // Abajo Derecha
+    glm::vec2 uv11(m.anchoText / tileSize, m.altoText / tileSize); // Arriba Derecha
+    glm::vec2 uv01(0.0f, m.altoText / tileSize); // Arriba Izquierda
 
     // Arreglo unificado y limpio
     std::vector<Triangle> tris = {
