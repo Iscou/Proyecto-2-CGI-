@@ -345,6 +345,8 @@ private:
         for (const Mesh& m : escena) {
             json jMesh;
             jMesh["nombre"] = m.nombre;
+            jMesh["dif"] = m.rutaDifusa;
+            jMesh["nor"] = m.rutaNormal;
             jMesh["pos"] = { m.position.x, m.position.y, m.position.z };
             jMesh["rot"] = { m.rotation.x, m.rotation.y, m.rotation.z };
             jMesh["scl"] = { m.scale.x, m.scale.y, m.scale.z };
@@ -375,11 +377,13 @@ private:
 
         for (const auto& jMesh : jEscena) {
             std::string nombreGuardado = jMesh["nombre"];
+            std::string difusaGuardada = jMesh["dif"];
+            std::string normalGuardada = jMesh["nor"];
             Mesh m;
 
             // Reconstruir la figura basandose en el sufijo
-            if (nombreGuardado.find("Cubo") != std::string::npos) m = Mesh::crearCubo(contadorID, contadorID);
-            else if (nombreGuardado.find("Piramide") != std::string::npos) m = Mesh::crearPiramide(contadorID, contadorID);
+            if (nombreGuardado.find("Cubo") != std::string::npos) m = Mesh::crearCubo(contadorID, contadorID, {difusaGuardada, normalGuardada, difusaGuardada != "", normalGuardada != ""});
+            else if (nombreGuardado.find("Piramide") != std::string::npos) m = Mesh::crearPiramide(contadorID, contadorID, {difusaGuardada, normalGuardada, difusaGuardada != "", normalGuardada != ""});
             else if (nombreGuardado.find("Esfera") != std::string::npos) m = Mesh::crearEsfera(contadorID, contadorID);
             else if (nombreGuardado.find("Cilindro") != std::string::npos) m = Mesh::crearCilindro(contadorID, contadorID);
             else {
@@ -1037,6 +1041,60 @@ public:
             ImGui::Checkbox("Visualizar Normales", &actual.seeNormals);
             ImGui::Checkbox("Visualizar Vertices", &actual.seeVertex);
             ImGui::Checkbox("Visualizar Bounding Box", &actual.seeBoudingBox);
+
+            if (ImGui::Button("Cambiar Textura")) {
+                std::cout << "Ingresa el nombre de la textura difusa. Ej: 'ladrillo.jpg': ";
+                std::cin >> textActual.rutaDifusa;
+
+                std::string rutaCompleta = "assets/textures/" + textActual.rutaDifusa;
+                std::ifstream file(rutaCompleta);
+                if (!file.is_open()) {
+                    std::cerr << "Error: La textura difusa no se encuentra en /assets/textures" << std::endl;
+                    textActual.tieneTextura = false;
+                    tieneTextura = false;
+                }
+                else {
+                    textActual.tieneTextura = true;
+                    tieneTextura = true;
+
+                    // Verificamos si la textura tiene normal Map
+                    char resp;
+                    std::cout << "¿Tiene Normal Map (Relieve)? (s/n): ";
+                    std::cin >> resp;
+
+                    if (resp == 's' || resp == 'S') {
+                        std::cout << "Ingresa el nombre del Normal Map. Ej: 'ladrillo_normal.jpg': ";
+                        std::cin >> textActual.rutaNormal;
+                        std::string rutaNormalCompleta = "assets/textures/" + textActual.rutaNormal;
+                        std::ifstream fileNormal(rutaNormalCompleta);
+
+                        if (!fileNormal.is_open()) {
+                            std::cerr << "Error: Normal Map no encontrado. Se desactivara el relieve." << std::endl;
+                            textActual.tieneNormalMap = false;
+                        }
+                        else {
+                            textActual.tieneNormalMap = true;
+                        }
+                    }
+                    else {
+                        textActual.tieneNormalMap = false;
+                    }
+
+                    Mesh nuevo;
+                    if (actual.nombre.find("Cubo") != std::string::npos) nuevo = Mesh::crearCubo(actual.id, actual.id, textActual);
+                    else nuevo = Mesh::crearPiramide(actual.id, actual.id, textActual);
+
+                    nuevo.scale = actual.scale;
+                    nuevo.rotation = actual.rotation;
+                    nuevo.position = actual.position;
+                    escena.push_back(nuevo);
+
+                    actual.limpiarGPU();
+                    escena.erase(escena.begin() + objSeleccionado);
+                    objSeleccionado = escena.empty() ? -1 : static_cast<int>(escena.size()) - 1;
+                }
+
+            }
 
             ImGui::Dummy(ImVec2(0.0f, 10.0f));
             // Boton rojo para eliminar

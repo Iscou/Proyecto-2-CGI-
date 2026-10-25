@@ -9,7 +9,7 @@
 struct TexturaInfo {
     std::string rutaDifusa; 
     std::string rutaNormal; 
-    bool tieneTextura;      
+    bool tieneTextura = false;      
     bool tieneNormalMap;    
 };
 

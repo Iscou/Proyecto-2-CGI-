@@ -122,6 +122,10 @@ void Mesh::limpiarGPU() {
 Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, TexturaInfo ti, float lado, float alpha) {
     Mesh m(idObjeto, "Cubo_" + std::to_string(idObjeto));
     float h = lado * 0.5f; // Operador restaurado
+
+    m.rutaDifusa = ti.rutaDifusa;
+    m.rutaNormal = ti.rutaNormal;
+
     glm::vec3 p[8] = {
         {-h,-h,-h}, {h,-h,-h}, {h,h,-h}, {-h,h,-h},
         {-h,-h, h}, {h,-h, h}, {h,h, h}, {-h,h, h}
@@ -179,6 +183,9 @@ Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, TexturaInfo ti, float base
     float yMax = altura * 0.5f;
     glm::vec3 punta(0.0f, yMax, 0.0f);
     glm::vec3 b0(-h, yMin,  h), b1(h, yMin,  h), b2(h, yMin, -h), b3(-h, yMin, -h);
+
+    m.rutaDifusa = ti.rutaDifusa;
+    m.rutaNormal = ti.rutaNormal;
 
     const glm::vec2 uvL(0.0f, 0.0f);   
     const glm::vec2 uvR(1.0f, 0.0f);   

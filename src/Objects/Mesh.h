@@ -22,6 +22,8 @@ public:
     int id = 0;
     std::string nombre = "Objeto3D";
     std::string rutaArchivo = ""; 
+    std::string rutaDifusa = "";
+    std::string rutaNormal = "";
 
     // Para colisiones 
     bool esDinamico = false;
