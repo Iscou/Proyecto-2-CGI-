@@ -122,16 +122,23 @@ void Mesh::limpiarGPU() {
 Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, TexturaInfo ti, float lado, float alpha) {
     Mesh m(idObjeto, "Cubo_" + std::to_string(idObjeto));
     float h = lado * 0.5f; // Operador restaurado
+
+    m.rutaDifusa = ti.rutaDifusa;
+    m.rutaNormal = ti.rutaNormal;
+
     glm::vec3 p[8] = {
         {-h,-h,-h}, {h,-h,-h}, {h,h,-h}, {-h,h,-h},
         {-h,-h, h}, {h,-h, h}, {h,h, h}, {-h,h, h}
     };
 
     // Definimos las 4 esquinas de una imagen (Coordenadas UV)
+    float tileSize = 1.0f;
+    m.anchoText = ti.ancho;
+    m.altoText = ti.alto;
     glm::vec2 uv00(0.0f, 0.0f); // Abajo Izquierda
-    glm::vec2 uv10(1.0f, 0.0f); // Abajo Derecha
-    glm::vec2 uv11(1.0f, 1.0f); // Arriba Derecha
-    glm::vec2 uv01(0.0f, 1.0f); // Arriba Izquierda
+    glm::vec2 uv10(m.anchoText / tileSize, 0.0f); // Abajo Derecha
+    glm::vec2 uv11(m.anchoText / tileSize, m.altoText / tileSize); // Arriba Derecha
+    glm::vec2 uv01(0.0f, m.altoText / tileSize); // Arriba Izquierda
 
     // Arreglo unificado y limpio
     std::vector<Triangle> tris = {
@@ -179,6 +186,9 @@ Mesh Mesh::crearPiramide(int idObjeto, int idSubMesh, TexturaInfo ti, float base
     float yMax = altura * 0.5f;
     glm::vec3 punta(0.0f, yMax, 0.0f);
     glm::vec3 b0(-h, yMin,  h), b1(h, yMin,  h), b2(h, yMin, -h), b3(-h, yMin, -h);
+
+    m.rutaDifusa = ti.rutaDifusa;
+    m.rutaNormal = ti.rutaNormal;
 
     const glm::vec2 uvL(0.0f, 0.0f);   
     const glm::vec2 uvR(1.0f, 0.0f);   
@@ -306,7 +316,9 @@ Mesh Mesh::crearCilindro (int idObjeto, int idSubMesh, float radio, float altura
 }
 
 Mesh Mesh::crearOBJ(int idObjeto, const std::string& rutaArchivo) {
-    return ObjLoader::cargarOBJ(idObjeto, rutaArchivo);
+    Mesh m = ObjLoader::cargarOBJ(idObjeto, rutaArchivo);
+    m.rutaArchivo = rutaArchivo;
+    return m;
 }
 
 bool Mesh::esTrasparente() const {

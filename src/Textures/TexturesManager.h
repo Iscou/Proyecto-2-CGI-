@@ -9,8 +9,10 @@
 struct TexturaInfo {
     std::string rutaDifusa; 
     std::string rutaNormal; 
-    bool tieneTextura;      
-    bool tieneNormalMap;    
+    bool tieneTextura = false;      
+    bool tieneNormalMap;
+    float ancho = 1.0f;
+    float alto = 1.0f;
 };
 
 GLuint cargarTextura(const std::string& ruta);

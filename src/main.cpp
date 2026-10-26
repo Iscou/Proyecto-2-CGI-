@@ -287,6 +287,9 @@ private:
         for (const Mesh& m : escena) {
             json jMesh;
             jMesh["nombre"] = m.nombre;
+            jMesh["dif"] = m.rutaDifusa;
+            jMesh["nor"] = m.rutaNormal;
+            jMesh["text"] = { m.anchoText, m.altoText };
             jMesh["pos"] = { m.position.x, m.position.y, m.position.z };
             jMesh["rot"] = { m.rotation.x, m.rotation.y, m.rotation.z };
             jMesh["scl"] = { m.scale.x, m.scale.y, m.scale.z };
@@ -311,15 +314,34 @@ private:
 
         for (const auto& jMesh : jEscena) {
             std::string nombreGuardado = jMesh["nombre"];
+            std::string difusaGuardada = jMesh["dif"];
+            std::string normalGuardada = jMesh["nor"];
             Mesh m;
-            if (nombreGuardado.find("Cubo") != std::string::npos) m = Mesh::crearCubo(contadorID, contadorID);
-            else if (nombreGuardado.find("Piramide") != std::string::npos) m = Mesh::crearPiramide(contadorID, contadorID);
+            if (nombreGuardado.find("Cubo") != std::string::npos) m = Mesh::crearCubo(contadorID, contadorID, { difusaGuardada, normalGuardada, difusaGuardada != "", normalGuardada != "", jMesh["text"][0], jMesh["text"][1] });
+            else if (nombreGuardado.find("Piramide") != std::string::npos) m = Mesh::crearPiramide(contadorID, contadorID, { difusaGuardada, normalGuardada, difusaGuardada != "", normalGuardada != "" });
             else if (nombreGuardado.find("Esfera") != std::string::npos) m = Mesh::crearEsfera(contadorID, contadorID);
             else if (nombreGuardado.find("Cilindro") != std::string::npos) m = Mesh::crearCilindro(contadorID, contadorID);
             else {
                 size_t pos = nombreGuardado.find('.');
                 std::string original = std::string(nombreGuardado.substr(0, pos));
                 m = Mesh::crearOBJ(contadorID, "assets/models/" + original + ".obj");
+
+                m.rutaDifusa = difusaGuardada;
+                m.rutaNormal = normalGuardada;
+
+                if (difusaGuardada != "") {
+                    GLuint texDifusa = cargarTextura(m.rutaDifusa);
+                    GLuint texNormal = cargarTextura(m.rutaNormal);
+
+                    for (SubMesh& sm : m.subMeshes) {
+                        sm.hasTexture = true;
+                        sm.texturaDifusaID = texDifusa;
+
+                        sm.tieneNormalMap = normalGuardada != "";
+                        sm.texturaNormalID = texNormal;
+                        sm.color = glm::vec4(1.0f);
+                    }
+                }
             }
             m.position = glm::vec3(jMesh["pos"][0], jMesh["pos"][1], jMesh["pos"][2]);
             m.rotation = glm::vec3(jMesh["rot"][0], jMesh["rot"][1], jMesh["rot"][2]);
