@@ -433,11 +433,12 @@ public:
         miCielo->cargarCubemap(carasCielo);
 
         // Plataforma inicial
-        Mesh piso = Mesh::crearCubo(contadorID++, contadorID++);
+        /*Mesh piso = Mesh::crearCubo(contadorID++, contadorID++);
         piso.scale = glm::vec3(50.0f, 0.1f, 50.0f);
         piso.position = glm::vec3(0.0f, -0.05f, 0.0f); // Justo debajo de los pies
         piso.subMeshes[0].color = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f); // Gris oscuro 
-        escena.push_back(piso);
+        escena.push_back(piso);*/
+        cargarEscena("Saves/escenarioDeTiro.json");
 
         // Bala con modelo bullet.obj y texturas
         Mesh* modeloBala = new Mesh(Mesh::crearOBJ(9999, "assets/models/bullet.obj")); 
@@ -492,7 +493,7 @@ public:
         }
 
         
-        jugador = new Jugador(glm::vec3(0.0f, 1.0f, 0.0f), pistola);
+        jugador = new Jugador(glm::vec3(1.55f, 1.0f, -11.4f), pistola);
         camera = *(jugador->getCamara()); 
 
         glEnable(GL_DEPTH_TEST);
