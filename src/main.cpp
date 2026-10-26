@@ -403,7 +403,6 @@ private:
                         sm.hasTexture = true;
                         sm.texturaDifusaID = texDifusa;
 
-                        // APAGADO TEMPORALMENTE: Si ObjLoader no calcula tangentes, el Normal Map corromperá la luz y se verá negro.
                         sm.tieneNormalMap = normalGuardada != "";
                         sm.texturaNormalID = texNormal;
                         sm.color = glm::vec4(1.0f);
