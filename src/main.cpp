@@ -68,6 +68,7 @@ uniform bool hasTexture;
 uniform sampler2D ourTexture;
 uniform bool usarNormalMap;      
 uniform sampler2D texturaNormal; 
+uniform bool invertirNormalY; // true = DirectX (Y-), false = OpenGL (Y+)
 uniform vec4 objectColor;
 
 uniform int modoIluminacion; 
@@ -98,7 +99,9 @@ void main() {
         if (usarNormalMap) {
             norm = texture(texturaNormal, TexCoords).rgb;
             norm = normalize(norm * 2.0 - 1.0);
-            norm.y = -norm.y; // Correccion Y- para mapas de DirectX (Unreal/Valorant)
+            if (invertirNormalY) {
+                norm.y = -norm.y; // Correccion para mapas en formato DirectX
+            }
             norm = normalize(TBN * norm);
         } else {
             norm = normalize(TBN[2]);
@@ -113,7 +116,7 @@ void main() {
     for(int i = 0; i < NR_POINT_LIGHTS; i++) {
         result += CalcPointLight(pointLights[i], norm, FragPos, viewDir, baseColorRgb);    
     }
-    result += CalcSpotLight(spotLight, norm, FragPos, viewDir, baseColorRgb);    
+    result += CalcSpotLight(spotLight, norm, FragPos, viewDir, baseColorRgb);
     
     FragColor = vec4(result, baseColorAlpha.a);
 }
@@ -233,7 +236,7 @@ private:
     bool tabPresionado = false;
     int triSeleccionadoGlobal = -1;
     int subMeshSeleccionadoId = -1;
-    int modIluminacion = 1; 
+    int modIluminacion = 2; 
 
     std::vector<Mesh> escena;
     int objSeleccionado = 0;
@@ -266,6 +269,9 @@ private:
     int tipoObjetivo = 0; 
     Mesh mallaDianaBase;
     bool dianaCargada = false;
+    GLuint texKeysNormalID = 0; // Para identificar que submalla usa el Normal Map en DirectX
+    glm::vec3 posLampara1 = glm::vec3(-5.0f, 10.1f, -16.0f);
+    glm::vec3 posLampara2 = glm::vec3( 5.0f, 10.1f, -16.0f);
 
     // Hitmarker Visual
     bool hitConfirmado = false;
@@ -432,23 +438,211 @@ public:
         miCielo = new SkyBox(999, 999, skyboxShaderProgram);
         miCielo->cargarCubemap(carasCielo);
 
-        // Plataforma inicial
-        /*Mesh piso = Mesh::crearCubo(contadorID++, contadorID++);
-        piso.scale = glm::vec3(50.0f, 0.1f, 50.0f);
-        piso.position = glm::vec3(0.0f, -0.05f, 0.0f); // Justo debajo de los pies
-        piso.subMeshes[0].color = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f); // Gris oscuro 
-        escena.push_back(piso);*/
         cargarEscena("assets/scenes/escenarioDeTiro.json");
+
+        // Decoracion galeria y sala (Z < -9.5f) 
+        const float NIVEL_SUELO = -0.5f;
+
+        // Funcion auxiliar segura: verifica que el Mesh tenga geometria antes de calcular su AABB
+        auto asentarEnY = [](Mesh& m, float yObjetivo) {
+            if (m.subMeshes.empty()) return;
+            m.position.y = 0.0f;
+            AABB caja = m.obtenerAABBGlobal();
+            m.position.y = yObjetivo - caja.min.y;
+        };
+
+        auto existeArchivo = [](const std::string& ruta) {
+            std::ifstream f(ruta);
+            if (!f.is_open()) {
+                std::cerr << "[AVISO] No se encontro el modelo: " << ruta << " (Revisa mayusculas/nombre en assets/models/)\n";
+                return false;
+            }
+            return true;
+        };
+
+        // Lamparas (lamparaLEDcuadrada.obj)
+        if (existeArchivo("assets/models/lamparaLEDcuadrada.obj")) {
+            Mesh baseLampara = Mesh::crearOBJ(contadorID++, "assets/models/lamparaLEDcuadrada.obj");
+            if (!baseLampara.subMeshes.empty()) {
+                for (SubMesh& sm : baseLampara.subMeshes) {
+                    sm.hasTexture = false;
+                    sm.tieneNormalMap = false;
+                    sm.color = glm::vec4(0.95f, 0.95f, 1.0f, 1.0f);
+                }
+                Mesh lamparaIzq = baseLampara;
+                lamparaIzq.id = contadorID++;
+                lamparaIzq.scale = glm::vec3(1.5f, 1.5f, 1.5f);
+                lamparaIzq.position = posLampara1;
+                escena.push_back(lamparaIzq);
+
+                Mesh lamparaDer = baseLampara;
+                lamparaDer.id = contadorID++;
+                lamparaDer.scale = glm::vec3(1.5f, 1.5f, 1.5f);
+                lamparaDer.position = posLampara2;
+                escena.push_back(lamparaDer);
+            }
+        }
+
+        // Escritorios (Desk.obj + Wood02.jpg)
+        float topeDesk1 = 0.5f;
+        float topeDesk2 = 0.5f;
+        if (existeArchivo("assets/models/Desk.obj")) {
+            GLuint texDesk = cargarTextura("Wood02.jpg");
+            Mesh baseDesk = Mesh::crearOBJ(contadorID++, "assets/models/Desk.obj");
+            if (!baseDesk.subMeshes.empty()) {
+                for (SubMesh& sm : baseDesk.subMeshes) {
+                    sm.hasTexture = true;
+                    sm.texturaDifusaID = texDesk;
+                    sm.tieneNormalMap = false;
+                    sm.color = glm::vec4(1.0f);
+                }
+
+                Mesh desk1 = baseDesk;
+                desk1.id = contadorID++;
+                desk1.scale = glm::vec3(1.5f, 1.5f, 1.5f);
+                desk1.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
+                desk1.position = glm::vec3(-6.0f, 0.0f, -15.5f);
+                asentarEnY(desk1, NIVEL_SUELO);
+                topeDesk1 = desk1.obtenerAABBGlobal().max.y;
+                escena.push_back(desk1);
+
+                Mesh desk2 = baseDesk;
+                desk2.id = contadorID++;
+                desk2.scale = glm::vec3(1.5f, 1.5f, 1.5f);
+                desk2.rotation = glm::vec3(0.0f, -90.0f, 0.0f);
+                desk2.position = glm::vec3(8.5f, 0.0f, -16.5f);
+                asentarEnY(desk2, NIVEL_SUELO);
+                topeDesk2 = desk2.obtenerAABBGlobal().max.y;
+                escena.push_back(desk2);
+            }
+        }
+
+        // Sillas (SillaPlegable.obj)
+        if (existeArchivo("assets/models/SillaPlegable.obj")) {
+            Mesh baseSilla = Mesh::crearOBJ(contadorID++, "assets/models/SillaPlegable.obj");
+            if (!baseSilla.subMeshes.empty()) {
+                for (SubMesh& sm : baseSilla.subMeshes) {
+                    sm.hasTexture = false;
+                    sm.tieneNormalMap = false;
+                    sm.color = glm::vec4(0.12f, 0.12f, 0.14f, 1.0f);
+                }
+
+                Mesh silla1 = baseSilla;
+                silla1.id = contadorID++;
+                silla1.scale = glm::vec3(1.3f, 1.3f, 1.3f);
+                silla1.rotation = glm::vec3(0.0f, 15.0f, 0.0f);
+                silla1.position = glm::vec3(-6.0f, 0.0f, -17.2f);
+                asentarEnY(silla1, NIVEL_SUELO);
+                escena.push_back(silla1);
+
+                Mesh silla2 = baseSilla;
+                silla2.id = contadorID++;
+                silla2.scale = glm::vec3(1.3f, 1.3f, 1.3f);
+                silla2.rotation = glm::vec3(0.0f, -105.0f, 0.0f);
+                silla2.position = glm::vec3(6.8f, 0.0f, -16.5f);
+                asentarEnY(silla2, NIVEL_SUELO);
+                escena.push_back(silla2);
+            }
+        }
+
+        // Laptops (laptops.obj)
+        if (existeArchivo("assets/models/laptopss.obj")) {
+            GLuint texLapColor  = cargarTextura("Laptop_Base_Color.png");
+            GLuint texLapNorm   = cargarTextura("Laptop_Normal_DirectX.png");
+            GLuint texKeysColor = cargarTextura("Keys_Base_Color.png");
+            texKeysNormalID     = cargarTextura("Keys_Normal_DirectX.png");
+
+            Mesh baseLaptop = Mesh::crearOBJ(contadorID++, "assets/models/laptops.obj");
+            if (!baseLaptop.subMeshes.empty()) {
+                for (size_t i = 0; i < baseLaptop.subMeshes.size(); ++i) {
+                    SubMesh& sm = baseLaptop.subMeshes[i];
+                    sm.hasTexture = true;
+                    sm.tieneNormalMap = true;
+                    sm.color = glm::vec4(1.0f);
+                    if (i == 0) {
+                        sm.texturaDifusaID = texLapColor;
+                        sm.texturaNormalID = texLapNorm;
+                    } else {
+                        sm.texturaDifusaID = texKeysColor;
+                        sm.texturaNormalID = texKeysNormalID;
+                    }
+                }
+
+                Mesh laptop1 = baseLaptop;
+                laptop1.id = contadorID++;
+                laptop1.scale = glm::vec3(0.8f, 0.8f, 0.8f);
+                laptop1.rotation = glm::vec3(0.0f, 180.0f, 0.0f);
+                laptop1.position = glm::vec3(-6.0f, 0.0f, -15.5f);
+                asentarEnY(laptop1, topeDesk1);
+                escena.push_back(laptop1);
+
+                Mesh laptop2 = baseLaptop;
+                laptop2.id = contadorID++;
+                laptop2.scale = glm::vec3(0.8f, 0.8f, 0.8f);
+                laptop2.rotation = glm::vec3(0.0f, 90.0f, 0.0f);
+                laptop2.position = glm::vec3(8.5f, 0.0f, -16.5f);
+                asentarEnY(laptop2, topeDesk2);
+                escena.push_back(laptop2);
+            }
+        }
+
+        // 5. Cajas de madera (cajaMadera.obj + BoX.jpg)
+        if (existeArchivo("assets/models/cajaMadera.obj")) {
+            GLuint texCaja = cargarTextura("BoX.jpg");
+            Mesh baseCaja = Mesh::crearOBJ(contadorID++, "assets/models/cajaMadera.obj");
+            if (!baseCaja.subMeshes.empty()) {
+                for (SubMesh& sm : baseCaja.subMeshes) {
+                    sm.hasTexture = true;
+                    sm.texturaDifusaID = texCaja;
+                    sm.tieneNormalMap = false;
+                    sm.color = glm::vec4(1.0f);
+                }
+
+                Mesh caja1 = baseCaja;
+                caja1.id = contadorID++;
+                caja1.scale = glm::vec3(1.8f, 1.8f, 1.8f);
+                caja1.rotation = glm::vec3(0.0f, 12.0f, 0.0f);
+                caja1.position = glm::vec3(-9.5f, 0.0f, -21.0f);
+                asentarEnY(caja1, NIVEL_SUELO);
+                float topeCaja1 = caja1.obtenerAABBGlobal().max.y;
+                escena.push_back(caja1);
+
+                Mesh caja2 = baseCaja;
+                caja2.id = contadorID++;
+                caja2.scale = glm::vec3(1.8f, 1.8f, 1.8f);
+                caja2.rotation = glm::vec3(0.0f, -5.0f, 0.0f);
+                caja2.position = glm::vec3(-6.8f, 0.0f, -21.5f);
+                asentarEnY(caja2, NIVEL_SUELO);
+                escena.push_back(caja2);
+
+                Mesh caja3 = baseCaja;
+                caja3.id = contadorID++;
+                caja3.scale = glm::vec3(1.4f, 1.4f, 1.4f);
+                caja3.rotation = glm::vec3(0.0f, 35.0f, 0.0f);
+                caja3.position = glm::vec3(-9.3f, 0.0f, -21.0f);
+                asentarEnY(caja3, topeCaja1);
+                escena.push_back(caja3);
+
+                Mesh caja4 = baseCaja;
+                caja4.id = contadorID++;
+                caja4.scale = glm::vec3(1.8f, 1.8f, 1.8f);
+                caja4.rotation = glm::vec3(0.0f, -20.0f, 0.0f);
+                caja4.position = glm::vec3(9.2f, 0.0f, -21.5f);
+                asentarEnY(caja4, NIVEL_SUELO);
+                escena.push_back(caja4);
+            }
+        }
+        // Fin deco
 
         // Bala con modelo bullet.obj y texturas
         Mesh* modeloBala = new Mesh(Mesh::crearOBJ(9999, "assets/models/bullet.obj")); 
-        modeloBala->scale = glm::vec3(0.02f, 0.02f, 0.02f); // Ajusta si el proyectil se ve muy grande o pequeño
+        modeloBala->scale = glm::vec3(0.02f, 0.02f, 0.02f); 
         GLuint texBalaDifusa = cargarTextura("Bullet_BaseColor.png");
         GLuint texBalaNormal = cargarTextura("Bullet_Normal.png");
         for (SubMesh& sm : modeloBala->subMeshes) {
             sm.hasTexture = true;
             sm.texturaDifusaID = texBalaDifusa;
-            sm.tieneNormalMap = true; // El mapa es OpenGL (Y+), actívalo si tu ObjLoader calcula tangentes
+            sm.tieneNormalMap = true; 
             sm.texturaNormalID = texBalaNormal;
             sm.color = glm::vec4(1.0f);
         }
@@ -475,23 +669,12 @@ public:
         for (SubMesh& sm : modeloPistola->subMeshes) {
             sm.hasTexture = true;
             sm.texturaDifusaID = texDifusa;
-            sm.tieneNormalMap = true; 
-            sm.texturaNormalID = texNormal;
-            sm.color = glm::vec4(1.0f); 
-        }
-
-        Arma* pistola = new Arma(true, 7, 1000, balaBase, glm::vec3(0), modeloPistola);
-        
-        for (SubMesh& sm : modeloPistola->subMeshes) {
-            sm.hasTexture = true;
-            sm.texturaDifusaID = texDifusa;
-            
-            // APAGADO TEMPORALMENTE: Si ObjLoader no calcula tangentes, el Normal Map corromperá la luz y se verá negro.
             sm.tieneNormalMap = false; 
             sm.texturaNormalID = texNormal;
             sm.color = glm::vec4(1.0f); 
         }
 
+        Arma* pistola = new Arma(true, 7, 1000, balaBase, glm::vec3(0), modeloPistola);
         
         jugador = new Jugador(glm::vec3(1.55f, 1.0f, -11.4f), pistola);
         camera = *(jugador->getCamara()); 
@@ -560,7 +743,7 @@ public:
         }
     }
 
-   void update(float deltaTime) override {
+    void update(float deltaTime) override {
         // Toggle Modo Juego (TAB)
         if (isKeyPressed(GLFW_KEY_TAB)) {
             if (!tabPresionado) {
@@ -591,6 +774,9 @@ public:
             } else { escPresionado = false; }
         }
 
+        // Guardamos la posición de la cámara antes de procesar cualquier movimiento
+        glm::vec3 posicionAnterior = camera.position;
+
         if (modoJuego) {
             if (!juegoPausado) {
                 jugador->mover(isKeyPressed(GLFW_KEY_W), isKeyPressed(GLFW_KEY_S), isKeyPressed(GLFW_KEY_A), isKeyPressed(GLFW_KEY_D), isKeyPressed(GLFW_KEY_LEFT_SHIFT), deltaTime);
@@ -609,9 +795,13 @@ public:
                     // Límite de 10 objetivos activos simultáneamente
                     if (spawnerTimer >= tiempoAparicion && botsActivos.size() < 10) {
                         spawnerTimer = 0.0f;
-                        float rx = (rand() % 2000 / 100.0f) - 10.0f; 
-                        float ry = (modoPractica == 3) ? -0.5f : (rand() % 500 / 100.0f) + 1.0f;   
-                        float rz = -10.0f - (rand() % 1000 / 100.0f); 
+                        
+                        // Rango X dentro de las paredes de la galería (-9.5 a +9.5)
+                        float rx = (rand() % 1900 / 100.0f) - 9.5f; 
+                        // Rango Z en la galería trasera (entre Z = -4.0 y Z = 10.5, frente al muro de tiro en Z = -8.75)
+                        float rz = -4.0f + (rand() % 1450 / 100.0f); 
+                        // Rango Y debajo del nuevo techo (10.2) y sobre el piso (-0.5)
+                        float ry = (modoPractica == 3) ? 0.2f : (rand() % 550 / 100.0f) + 1.2f;   
                         glm::vec3 posAleatoria = glm::vec3(rx, ry, rz); 
 
                         Mesh* modeloBot = nullptr;
@@ -631,8 +821,10 @@ public:
                             modeloBot->scale = glm::vec3(3.0f, 3.0f, 3.0f); 
                             
                             if (modoPractica != 3) {
+                                // Alineamos la base del dummy con la cara superior del piso de baldosas (Y = -0.5f)
+                                modeloBot->position = glm::vec3(rx, 0.0f, rz);
                                 AABB cajaInicial = modeloBot->obtenerAABBGlobal();
-                                float ajusteSuelo = -cajaInicial.min.y;
+                                float ajusteSuelo = -0.5f - cajaInicial.min.y;
                                 posAleatoria.y = ajusteSuelo;
                             }
                             modeloBot->position = posAleatoria;
@@ -640,7 +832,8 @@ public:
                             usaTiempo = false;
                         }
 
-                        glm::vec3 dirSpawn = glm::vec3(0.0f, 0.0f, 0.0f) - posAleatoria;
+                        // Orientar los objetivos hacia la posición de spawn del jugador (1.55, 1.0, -11.4)
+                        glm::vec3 dirSpawn = glm::vec3(1.55f, 1.0f, -11.4f) - posAleatoria;
                         float anguloVista = glm::degrees(atan2(dirSpawn.x, dirSpawn.z));
                         modeloBot->rotation.y = anguloVista;
 
@@ -649,10 +842,10 @@ public:
 
                         Bot* nuevoBot = new Bot(posAleatoria, modeloBot, vidaObjetivo, 1, dinamico, vel, usaTiempo, tVida);
                         
-                        // Si es Skeet Shooting (3), lo lanzamos en parábola hacia arriba
+                        // Si es Skeet Shooting (3), lo lanzamos en parábola hacia arriba sin atravesar el techo (10.2)
                         if (modoPractica == 3) {
-                            float velX = ((rand() % 600) / 100.0f) - 3.0f; // Desviación lateral suave
-                            float velY = 12.0f + ((rand() % 300) / 100.0f); // Impulso vertical
+                            float velX = ((rand() % 600) / 100.0f) - 3.0f; 
+                            float velY = 10.5f + ((rand() % 200) / 100.0f); 
                             nuevoBot->activarModoSkeet(glm::vec3(velX, velY, 0.0f));
                         }
 
@@ -702,7 +895,6 @@ public:
             }
         }
 
-        glm::vec3 posicionAnterior = camera.position;
         if (modoLibre && !ImGui::GetIO().WantCaptureKeyboard && !modoJuego) {
             camera.processKeyboard(
                 isKeyPressed(GLFW_KEY_W), isKeyPressed(GLFW_KEY_S),
@@ -712,36 +904,52 @@ public:
             );
         }
 
+        // Validación de colisiones AABB contra paredes, columnas, mesas y estructuras
         if (camera.position != posicionAnterior) {
             glm::vec3 posFutura = camera.position;
-            glm::vec3 radioJugador(0.2f, 0.8f, 0.2f);
+            glm::vec3 radioJugador(0.35f, 0.7f, 0.35f);
 
+            // Eje X (ignorando mallas que están a nivel del suelo como las losas de piso)
             camera.position = glm::vec3(posFutura.x, posicionAnterior.y, posicionAnterior.z);
             AABB cajaX = { camera.position - radioJugador, camera.position + radioJugador };
             for (const Mesh& m : escena) {
-                if (!m.esDinamico && comprobarColision(cajaX, m.obtenerAABBGlobal())) {
+                AABB cajaMalla = m.obtenerAABBGlobal();
+                if (!m.esDinamico && cajaMalla.max.y > -0.4f && comprobarColision(cajaX, cajaMalla)) {
                     camera.position.x = posicionAnterior.x; 
                     break;
                 }
             }
             posFutura.x = camera.position.x; 
 
+            // Eje Y (solo en modo libre, ya que en modoJuego Jugador.h controla la gravedad y el suelo)
             camera.position = glm::vec3(posFutura.x, posFutura.y, posicionAnterior.z);
-            AABB cajaY = { camera.position - radioJugador, camera.position + radioJugador };
-            for (const Mesh& m : escena) {
-                if (!m.esDinamico && comprobarColision(cajaY, m.obtenerAABBGlobal())) {
-                    camera.position.y = posicionAnterior.y; 
-                    break;
+            if (!modoJuego) {
+                AABB cajaY = { camera.position - radioJugador, camera.position + radioJugador };
+                for (const Mesh& m : escena) {
+                    if (!m.esDinamico && comprobarColision(cajaY, m.obtenerAABBGlobal())) {
+                        camera.position.y = posicionAnterior.y; 
+                        break;
+                    }
                 }
             }
             posFutura.y = camera.position.y;
 
+            // Eje Z (ignorando mallas que están a nivel del suelo)
             camera.position = glm::vec3(posFutura.x, posFutura.y, posFutura.z);
             AABB cajaZ = { camera.position - radioJugador, camera.position + radioJugador };
             for (const Mesh& m : escena) {
-                if (!m.esDinamico && comprobarColision(cajaZ, m.obtenerAABBGlobal())) {
+                AABB cajaMalla = m.obtenerAABBGlobal();
+                if (!m.esDinamico && cajaMalla.max.y > -0.4f && comprobarColision(cajaZ, cajaMalla)) {
                     camera.position.z = posicionAnterior.z; 
                     break;
+                }
+            }
+
+            // Sincronizar la posición validada de vuelta al Jugador y actualizar el arma
+            if (modoJuego && jugador != nullptr) {
+                jugador->getCamara()->position = camera.position;
+                if (jugador->getArma() != nullptr) {
+                    jugador->getArma()->desplazarModelo(*(jugador->getCamara()), 0.0f);
                 }
             }
         }
@@ -818,24 +1026,34 @@ public:
         glUseProgram(shaderProgram);
         glUniform1i(glGetUniformLocation(shaderProgram, "modoIluminacion"), modIluminacion);
         glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, glm::value_ptr(camera.position));
+
+        // Directional Light (El Sol)
         glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
         glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.ambient"), 0.1f, 0.1f, 0.1f); 
         glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.diffuse"), 0.4f, 0.4f, 0.4f); 
         glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.specular"), 0.5f, 0.5f, 0.5f); 
-        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].position"), 2.0f, 2.0f, 2.0f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].ambient"), 0.05f, 0.05f, 0.05f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].diffuse"), 0.8f, 0.8f, 0.8f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].specular"), 0.2f, 0.2f, 0.2f); 
+
+        //  Point Light #1 (Bombillo en la Lámpara LED Izquierda: posLampara1)
+        glm::vec3 posBombillo1 = posLampara1 - glm::vec3(0.0f, 0.3f, 0.0f); // Un poquito debajo del modelo de la lámpara
+        glUniform3fv(glGetUniformLocation(shaderProgram, "pointLights[0].position"), 1, glm::value_ptr(posBombillo1));
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].ambient"), 0.08f, 0.08f, 0.08f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].diffuse"), 0.95f, 0.95f, 0.9f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].specular"), 1.0f, 1.0f, 1.0f); 
         glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].constant"), 1.0f);
-        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].linear"), 0.09f);
-        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].quadratic"), 0.032f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].position"), -2.0f, 2.0f, -2.0f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].ambient"), 0.05f, 0.05f, 0.05f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].diffuse"), 0.8f, 0.8f, 0.8f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].linear"), 0.045f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].quadratic"), 0.0075f);
+
+        //  Point Light #2 (Bombillo en la Lámpara LED Derecha: posLampara2)
+        glm::vec3 posBombillo2 = posLampara2 - glm::vec3(0.0f, 0.3f, 0.0f);
+        glUniform3fv(glGetUniformLocation(shaderProgram, "pointLights[1].position"), 1, glm::value_ptr(posBombillo2));
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].ambient"), 0.08f, 0.08f, 0.08f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].diffuse"), 0.95f, 0.95f, 0.9f);
         glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].specular"), 1.0f, 1.0f, 1.0f);
         glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].constant"), 1.0f);
-        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].linear"), 0.09f);
-        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].quadratic"), 0.032f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].linear"), 0.045f);
+        glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].quadratic"), 0.0075f);
+
+        // 4. Spot Light (Linterna acoplada a la cámara del jugador)
         glUniform3fv(glGetUniformLocation(shaderProgram, "spotLight.position"), 1, glm::value_ptr(camera.position));
         glUniform3fv(glGetUniformLocation(shaderProgram, "spotLight.direction"), 1, glm::value_ptr(camera.front));
         glUniform1f(glGetUniformLocation(shaderProgram, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
@@ -846,8 +1064,12 @@ public:
         glUniform3f(glGetUniformLocation(shaderProgram, "spotLight.ambient"), 0.0f, 0.0f, 0.0f);
         glUniform3f(glGetUniformLocation(shaderProgram, "spotLight.diffuse"), 1.0f, 1.0f, 1.0f);
         glUniform3f(glGetUniformLocation(shaderProgram, "spotLight.specular"), 1.0f, 1.0f, 1.0f);
+
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(proj));
+
+        // Por defecto los Normal Maps están en formato OpenGL (invertirNormalY = false)
+        glUniform1i(glGetUniformLocation(shaderProgram, "invertirNormalY"), false);
 
         if (modoJuego) {
             if (jugador->getArma() != nullptr && jugador->getArma()->getModelo() != nullptr) {
@@ -861,8 +1083,22 @@ public:
             }
         }
 
-        for (const Mesh& m : escena) if (!m.esTrasparente()) m.dibujar(shaderProgram);
-        for (const Mesh& m : escena) if (m.esTrasparente()) m.dibujar(shaderProgram);
+        // Dibuja la escena activando invertirNormalY solo cuando la malla usa el Normal Map de las teclas en DirectX
+        auto dibujarMallaConFormatoNormal = [&](const Mesh& m) {
+            bool usaDirectX = false;
+            for (const SubMesh& sm : m.subMeshes) {
+                if (sm.tieneNormalMap && sm.texturaNormalID == texKeysNormalID) {
+                    usaDirectX = true;
+                    break;
+                }
+            }
+            glUniform1i(glGetUniformLocation(shaderProgram, "invertirNormalY"), usaDirectX);
+            m.dibujar(shaderProgram);
+        };
+
+        for (const Mesh& m : escena) if (!m.esTrasparente()) dibujarMallaConFormatoNormal(m);
+        for (const Mesh& m : escena) if (m.esTrasparente()) dibujarMallaConFormatoNormal(m);
+        glUniform1i(glGetUniformLocation(shaderProgram, "invertirNormalY"), false);
 
         // Se añade !modoJuego para que las líneas amarillas no se dibujen en el shooter
         if (!modoJuego && objSeleccionado >= 0 && objSeleccionado < escena.size()) {

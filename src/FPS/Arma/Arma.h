@@ -59,7 +59,6 @@ public:
     }
 
     void desplazarModelo(Camera cam, float velocidad) {
-        // Coordenadas ajustadas para una vista FPS clasica
         float offsetFrente = 0.35f;  
         float offsetDerecha = 0.15f;  
         float offsetAbajo = -0.15f; 
@@ -71,9 +70,10 @@ public:
 
         modelo->position = posicion;
         
-        float correccionYaw = 180.0f; 
-        modelo->rotation.y = -cam.yaw + correccionYaw;
-        modelo->rotation.x = cam.pitch;
+        float yawRad = glm::radians(-cam.yaw - 90.0f);
+        modelo->rotation.y = -cam.yaw + 180.0f;
+        modelo->rotation.x = cam.pitch * cos(yawRad);
+        modelo->rotation.z = cam.pitch * sin(yawRad);
     }
 
     Mesh* getModelo() { return modelo; }
