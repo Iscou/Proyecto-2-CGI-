@@ -438,7 +438,7 @@ public:
         piso.position = glm::vec3(0.0f, -0.05f, 0.0f); // Justo debajo de los pies
         piso.subMeshes[0].color = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f); // Gris oscuro 
         escena.push_back(piso);*/
-        cargarEscena("Saves/escenarioDeTiro.json");
+        cargarEscena("assets/scenes/escenarioDeTiro.json");
 
         // Bala con modelo bullet.obj y texturas
         Mesh* modeloBala = new Mesh(Mesh::crearOBJ(9999, "assets/models/bullet.obj")); 

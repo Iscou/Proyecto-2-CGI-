@@ -93,13 +93,6 @@ add_custom_command(TARGET proyecto2 POST_BUILD
     "$<TARGET_FILE_DIR:proyecto2>/assets"
 )
 
-# Copia la carpeta Saves exactamente al lado del ejecutable (.exe)
-add_custom_command(TARGET proyecto2 POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_SOURCE_DIR}/Saves"
-    "$<TARGET_FILE_DIR:proyecto2>/Saves"
-)
-
 # Descargar nlohmann/json automaticamente     
 FetchContent_Declare(
     json
