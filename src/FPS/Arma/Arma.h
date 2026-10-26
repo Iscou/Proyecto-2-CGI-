@@ -42,10 +42,8 @@ public:
         }
     }
 
-  
-
-    Bala* disparar(glm::vec3 direccionApuntado) {
-        if (balasRestantes == 0) return nullptr;
+    Bala* disparar(glm::vec3 direccionApuntado, bool municionInfinita = false) {
+        if (!municionInfinita && balasRestantes == 0) return nullptr;
 
         Bala* balaDisparada = new Bala(*bala);
         balaDisparada->actualizarDir(direccionApuntado);
@@ -54,7 +52,9 @@ public:
         glm::vec3 puntoDeDisparo = this->posicion + (direccionApuntado * 0.5f);
         balaDisparada->setPosicionInicial(puntoDeDisparo);
         
-        balasRestantes--;
+        if (!municionInfinita) {
+            balasRestantes--;
+        }
         return balaDisparada;
     }
 
@@ -77,4 +77,6 @@ public:
     }
 
     Mesh* getModelo() { return modelo; }
+    int getBalasRestantes() const { return balasRestantes; }
+    int getBalasReserva() const { return balasReserva; }
 };

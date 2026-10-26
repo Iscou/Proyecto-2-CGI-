@@ -244,18 +244,32 @@ private:
     bool cullFaceActivo = false;
     int modoSeleccion = 0; 
 
-    // Variables Shooter 
+    // --- Variables Shooter ---
     bool modoJuego = false;
     bool juegoPausado = false;
     bool escPresionado = false;
     int modoPractica = 0; 
-    int puntaje = 0;
+    
+    // Contadores de Precisión
+    int botsDerribados = 0;
+    int botsGenerados = 0;
+    
     float spawnerTimer = 0.0f;
-    float tiempoAparicion = 1.5f; 
-    const float TIEMPO_LIMITE = 45.0f;
+    float tiempoAparicion = 0.6f; // Aparición rápida
+    
+    const float TIEMPO_LIMITE = 60.0f; // 1 Minuto exacto
     float tiempoLimite = TIEMPO_LIMITE;
     bool animacionVictoria = false;
     bool finSimulacion = false;
+    
+    bool municionInfinita = false;
+    int tipoObjetivo = 0; 
+    Mesh mallaDianaBase;
+    bool dianaCargada = false;
+
+    // Hitmarker Visual
+    bool hitConfirmado = false;
+    float hitmarkerTimer = 0.0f;
 
     Jugador* jugador = nullptr;
     std::vector<Bot*> botsActivos;
@@ -403,16 +417,47 @@ public:
         piso.subMeshes[0].color = glm::vec4(0.2f, 0.2f, 0.2f, 1.0f); // Gris oscuro 
         escena.push_back(piso);
 
-        // Bala
-        Mesh* modeloBala = new Mesh(Mesh::crearEsfera(9999, 9999, 0.01f)); 
+        // Bala con modelo bullet.obj y texturas
+        Mesh* modeloBala = new Mesh(Mesh::crearOBJ(9999, "assets/models/bullet.obj")); 
+        modeloBala->scale = glm::vec3(0.02f, 0.02f, 0.02f); // Ajusta si el proyectil se ve muy grande o pequeño
+        GLuint texBalaDifusa = cargarTextura("Bullet_BaseColor.png");
+        GLuint texBalaNormal = cargarTextura("Bullet_Normal.png");
+        for (SubMesh& sm : modeloBala->subMeshes) {
+            sm.hasTexture = true;
+            sm.texturaDifusaID = texBalaDifusa;
+            sm.tieneNormalMap = true; // El mapa es OpenGL (Y+), actívalo si tu ObjLoader calcula tangentes
+            sm.texturaNormalID = texBalaNormal;
+            sm.color = glm::vec4(1.0f);
+        }
         Bala* balaBase = new Bala(100.0f, 400.0f, modeloBala, 1.5f, 0.8f, 0.5f, 0.8f, 10.0f, 30.0f, 100.0f, glm::vec3(0), glm::vec3(0));
         
-        // Arma
+        // Plantilla pre-cargada para la Diana (Target)
+        mallaDianaBase = Mesh::crearOBJ(7777, "assets/models/target.obj");
+        GLuint texDiana = cargarTextura("TARGETBASEUVV.png");
+        for (SubMesh& sm : mallaDianaBase.subMeshes) {
+            sm.hasTexture = true;
+            sm.texturaDifusaID = texDiana;
+            sm.tieneNormalMap = false;
+            sm.color = glm::vec4(1.0f);
+        }
+        dianaCargada = true;
+
+        // Arma 
         Mesh* modeloPistola = new Mesh(Mesh::crearOBJ(8888, "assets/models/Pistol.obj")); 
-        modeloPistola->scale = glm::vec3(0.1f, 0.1f, 0.1f); 
+        modeloPistola->scale = glm::vec3(0.2f, 0.2f, 0.2f); 
         
         GLuint texDifusa = cargarTextura("colt_low_polyfbx_m1911_BaseColor.png");
         GLuint texNormal = cargarTextura("colt_low_polyfbx_m1911_Normal.png");
+        
+        for (SubMesh& sm : modeloPistola->subMeshes) {
+            sm.hasTexture = true;
+            sm.texturaDifusaID = texDifusa;
+            sm.tieneNormalMap = true; 
+            sm.texturaNormalID = texNormal;
+            sm.color = glm::vec4(1.0f); 
+        }
+
+        Arma* pistola = new Arma(true, 7, 1000, balaBase, glm::vec3(0), modeloPistola);
         
         for (SubMesh& sm : modeloPistola->subMeshes) {
             sm.hasTexture = true;
@@ -424,7 +469,6 @@ public:
             sm.color = glm::vec4(1.0f); 
         }
 
-        Arma* pistola = new Arma(true, 7, 35, balaBase, glm::vec3(0), modeloPistola); 
         
         jugador = new Jugador(glm::vec3(0.0f, 1.0f, 0.0f), pistola);
         camera = *(jugador->getCamara()); 
@@ -436,7 +480,7 @@ public:
     void onMouseButtonDown(int button, double x, double y) override {
         if (modoJuego) {
             if (button == GLFW_MOUSE_BUTTON_LEFT && !juegoPausado) {
-                Bala* nuevaBala = jugador->disparar();
+                Bala* nuevaBala = jugador->disparar(municionInfinita);
                 if (nuevaBala != nullptr) {
                     balasActivas.push_back(nuevaBala);
                 }
@@ -493,7 +537,7 @@ public:
         }
     }
 
-    void update(float deltaTime) override {
+   void update(float deltaTime) override {
         // Toggle Modo Juego (TAB)
         if (isKeyPressed(GLFW_KEY_TAB)) {
             if (!tabPresionado) {
@@ -509,9 +553,9 @@ public:
             }
         } else { tabPresionado = false; }
 
-        // Toggle Pausa (ESC)
+        // Toggle Pausa (ESC o P)
         if (modoJuego) {
-            if (isKeyPressed(GLFW_KEY_ESCAPE)) {
+            if (isKeyPressed(GLFW_KEY_ESCAPE) || isKeyPressed(GLFW_KEY_P)) {
                 if (!escPresionado) {
                     juegoPausado = !juegoPausado;
                     glfwSetInputMode(getWindow(), GLFW_CURSOR, juegoPausado ? GLFW_CURSOR_NORMAL : GLFW_CURSOR_DISABLED);
@@ -538,27 +582,74 @@ public:
                 if (modoPractica > 0) {
                     emitirParticulas = false; finSimulacion = false;
                     spawnerTimer += deltaTime;
-                    if (spawnerTimer >= tiempoAparicion) {
+                    
+                    // Límite de 10 objetivos activos simultáneamente
+                    if (spawnerTimer >= tiempoAparicion && botsActivos.size() < 10) {
                         spawnerTimer = 0.0f;
                         float rx = (rand() % 2000 / 100.0f) - 10.0f; 
-                        float ry = (rand() % 500 / 100.0f) + 1.0f;   
-                        glm::vec3 posAleatoria = glm::vec3(rx, ry, -15.0f); 
+                        float ry = (modoPractica == 3) ? -0.5f : (rand() % 500 / 100.0f) + 1.0f;   
+                        float rz = -10.0f - (rand() % 1000 / 100.0f); 
+                        glm::vec3 posAleatoria = glm::vec3(rx, ry, rz); 
 
-                        Mesh* modeloBot = new Mesh(Mesh::crearCubo(contadorID++, contadorID++));
-                        modeloBot->subMeshes[0].color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); 
+                        Mesh* modeloBot = nullptr;
+                        float vidaObjetivo = 1.0f;
+                        bool usaTiempo = false;
+                        float tVida = 3.5f; 
+
+                        if (tipoObjetivo == 0) {
+                            modeloBot = new Mesh(Mesh::crearEsfera(contadorID++, contadorID++, 1.0f));
+                            modeloBot->subMeshes[0].color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); 
+                            modeloBot->position = posAleatoria;
+                            vidaObjetivo = 1.0f;
+                            usaTiempo = (modoPractica != 3); // En Skeet desaparece al caer al suelo
+                        } else {
+                            modeloBot = new Mesh(mallaDianaBase);
+                            modeloBot->id = contadorID++;
+                            modeloBot->scale = glm::vec3(3.0f, 3.0f, 3.0f); 
+                            
+                            if (modoPractica != 3) {
+                                AABB cajaInicial = modeloBot->obtenerAABBGlobal();
+                                float ajusteSuelo = -cajaInicial.min.y;
+                                posAleatoria.y = ajusteSuelo;
+                            }
+                            modeloBot->position = posAleatoria;
+                            vidaObjetivo = 100.0f;
+                            usaTiempo = false;
+                        }
+
+                        glm::vec3 dirSpawn = glm::vec3(0.0f, 0.0f, 0.0f) - posAleatoria;
+                        float anguloVista = glm::degrees(atan2(dirSpawn.x, dirSpawn.z));
+                        modeloBot->rotation.y = anguloVista;
+
                         bool dinamico = (modoPractica == 2);
-                        Bot* nuevoBot = new Bot(posAleatoria, modeloBot, 100.0f, 10, dinamico, dinamico ? 3.0f : 0.0f);
+                        float vel = (modoPractica == 2) ? 5.0f : 0.0f;
+
+                        Bot* nuevoBot = new Bot(posAleatoria, modeloBot, vidaObjetivo, 1, dinamico, vel, usaTiempo, tVida);
+                        
+                        // Si es Skeet Shooting (3), lo lanzamos en parábola hacia arriba
+                        if (modoPractica == 3) {
+                            float velX = ((rand() % 600) / 100.0f) - 3.0f; // Desviación lateral suave
+                            float velY = 12.0f + ((rand() % 300) / 100.0f); // Impulso vertical
+                            nuevoBot->activarModoSkeet(glm::vec3(velX, velY, 0.0f));
+                        }
+
                         botsActivos.push_back(nuevoBot);
+                        botsGenerados++;
                     }
                 }
 
+                // Gestión de balas e impactos
                 for (auto itBala = balasActivas.begin(); itBala != balasActivas.end(); ) {
                     Bala* b = *itBala;
                     b->actualizarPos(deltaTime);
                     for (Bot* bot : botsActivos) {
                         if (!bot->getEstaMuerto() && comprobarColision(b->getHitBox(), bot->getHitBox())) {
                             b->calcularDMGFinal(bot, 'c'); 
-                            if (bot->getEstaMuerto()) puntaje += 10;
+                            
+                            hitConfirmado = true;
+                            hitmarkerTimer = 0.15f; 
+
+                            if (bot->getEstaMuerto()) botsDerribados++; 
                             break; 
                         }
                     }
@@ -570,6 +661,7 @@ public:
                     }
                 }
 
+                // Actualizar y limpiar bots muertos o expirados
                 for (auto itBot = botsActivos.begin(); itBot != botsActivos.end(); ) {
                     (*itBot)->update(deltaTime);
                     if ((*itBot)->getEstaMuerto()) {
@@ -578,6 +670,11 @@ public:
                     } else {
                         ++itBot;
                     }
+                }
+                
+                if (hitConfirmado) {
+                    hitmarkerTimer -= deltaTime;
+                    if (hitmarkerTimer <= 0.0f) hitConfirmado = false;
                 }
             }
         }
@@ -631,12 +728,10 @@ public:
                 glm::vec3 posAnterior = escena[i].position;
                 escena[i].position += escena[i].velocidad * deltaTime; 
                 AABB cajaDinamica = escena[i].obtenerAABBGlobal();
-                bool choco = false;
                 for (size_t j = 0; j < escena.size(); j++) {
                     if (i == j) continue; 
                     AABB cajaOtro = escena[j].obtenerAABBGlobal();
                     if (comprobarColision(cajaDinamica, cajaOtro)) {
-                        choco = true;
                         escena[i].position = posAnterior;
                         escena[i].velocidad = glm::vec3(0.0f);
                         break;
@@ -683,16 +778,6 @@ public:
         }
 
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-        // Si victoria
-        if (puntaje >= 100) {
-            tiempoLimite = TIEMPO_LIMITE;
-            modoPractica = 0;
-            for (Bot* bot : botsActivos) delete bot;
-            botsActivos.clear();
-            puntaje = 0;
-            emitirParticulas = true; finSimulacion = true; animacionVictoria = true;
-        }
 
         if (emitirParticulas) {
             if (!finSimulacion) particleSystem->Update(deltaTime, *emisorPos, particlesPerFrame);
@@ -756,7 +841,8 @@ public:
         for (const Mesh& m : escena) if (!m.esTrasparente()) m.dibujar(shaderProgram);
         for (const Mesh& m : escena) if (m.esTrasparente()) m.dibujar(shaderProgram);
 
-        if (objSeleccionado >= 0 && objSeleccionado < escena.size()) {
+        // Se añade !modoJuego para que las líneas amarillas no se dibujen en el shooter
+        if (!modoJuego && objSeleccionado >= 0 && objSeleccionado < escena.size()) {
             Mesh& m = escena[objSeleccionado];
             glDisable(GL_DEPTH_TEST);
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -823,7 +909,6 @@ public:
             ImGui::RadioButton("Blinn-Phong (Brillo)", &modIluminacion, 2);
             ImGui::Separator();
             
-            // Particulas y generacion geometrica del UI
             ImGui::Text("Particulas:");
             if (ImGui::Button("Emitir Particulas")) { emitirParticulas = !emitirParticulas; }
             if (emitirParticulas) {
@@ -850,52 +935,84 @@ public:
             if (ImGui::Button("Borrar Escena", ImVec2(-1, 0))) { for (Mesh& m : escena) m.limpiarGPU(); escena.clear(); objSeleccionado = -1; }
             ImGui::End();
         } else {
-            // HUD del Juego y Menu de Pausa
+            // HUD del Juego 
             if (!juegoPausado) {
                 ImDrawList* drawList = ImGui::GetBackgroundDrawList();
                 ImVec2 centroPantalla = ImVec2(width * 0.5f, height * 0.5f);
-                drawList->AddCircleFilled(centroPantalla, 4.0f, IM_COL32(0, 255, 0, 255)); 
+                
+                ImU32 colorMira = hitConfirmado ? IM_COL32(255, 0, 0, 255) : IM_COL32(0, 255, 0, 255);
+                drawList->AddCircleFilled(centroPantalla, 4.0f, colorMira); 
                 
                 ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
                 ImGui::SetNextWindowBgAlpha(0.3f); 
                 ImGui::Begin("HUD Shooter", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize);
-                ImGui::Text("Consigue 100pts antes de %dseg", static_cast<int>(TIEMPO_LIMITE));
-                ImGui::Text("PUNTAJE: %d", puntaje);
-                int segundos = static_cast<int>(tiempoLimite) % 60; ImGui::Text("Tiempo: %02d", segundos);
-                if (modoPractica > 0 && tiempoLimite > 0.0f)
-                {
+                
+                ImGui::Text("RENDIMIENTO: %d Destruidos / %d Spawns", botsDerribados, botsGenerados);
+                if (botsGenerados > 0) {
+                    float precision = (float)botsDerribados / (float)botsGenerados * 100.0f;
+                    ImGui::Text("PRECISION: %.1f %%", precision);
+                }
+                
+                int segundos = static_cast<int>(tiempoLimite); 
+                ImGui::Text("Tiempo restante: %02d s", segundos);
+                
+                ImGui::Separator();
+                if (jugador != nullptr && jugador->getArma() != nullptr) {
+                    if (municionInfinita) ImGui::Text("MUNICION: INFINITA");
+                    else ImGui::Text("MUNICION: %d / %d", jugador->getArma()->getBalasRestantes(), jugador->getArma()->getBalasReserva());
+                }
+
+                if (modoPractica > 0 && tiempoLimite > 0.0f) {
                     tiempoLimite -= ImGui::GetIO().DeltaTime;
-                    if (tiempoLimite <= 0.0f)
-                    {
+                    if (tiempoLimite <= 0.0f) {
                         tiempoLimite = TIEMPO_LIMITE;
                         modoPractica = 0;
                         for (Bot* bot : botsActivos) delete bot;
                         botsActivos.clear();
-                        puntaje = 0;
-                        emitirParticulas = true; finSimulacion = true; animacionVictoria = false;
+                        
+                        // Victoria si logra al menos 50% de precisión al acabar el minuto
+                        float precisionFinal = (botsGenerados > 0) ? ((float)botsDerribados / botsGenerados) : 0.0f;
+                        emitirParticulas = true; 
+                        finSimulacion = true; 
+                        animacionVictoria = (precisionFinal >= 0.5f);
                     }
                 }
-                ImGui::Text("Pulsa ESC para Pausar");
+                ImGui::Text("Pulsa ESC o P para Pausar");
                 ImGui::End();
             } else {
                 ImGui::SetNextWindowPos(ImVec2(10, 10), ImGuiCond_Always);
                 ImGui::SetNextWindowBgAlpha(0.8f); 
                 ImGui::Begin("Menu de Pausa", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse);
                 ImGui::Text("--- JUEGO PAUSADO ---");
-                ImGui::Text("PUNTAJE ACTUAL: %d", puntaje);
-                ImGui::Separator();
-                ImGui::Text("Rutina de Entrenamiento:");
-                ImGui::RadioButton("Gridshot (Estatico)", &modoPractica, 1);
-                ImGui::RadioButton("Strafing (Movil)", &modoPractica, 2);
-                ImGui::RadioButton("Detener Spawner", &modoPractica, 0);
-                ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                if (ImGui::Button("Limpiar Arena", ImVec2(-1, 0))) {
-                    for (Bot* bot : botsActivos) delete bot;
-                    botsActivos.clear(); 
-                    puntaje = 0;
+                ImGui::Text("Destruidos: %d | Generados: %d", botsDerribados, botsGenerados);
+                if (botsGenerados > 0) {
+                    ImGui::Text("PRECISION ACTUAL: %.1f %%", (float)botsDerribados / (float)botsGenerados * 100.0f);
                 }
                 ImGui::Separator();
-                ImGui::Text("Pulsa ESC para reanudar el combate");
+                ImGui::Text("Rutina de Entrenamiento (1 Minuto):");
+                ImGui::RadioButton("Gridshot (Estatico)", &modoPractica, 1);
+                ImGui::RadioButton("Strafing (Movil X)", &modoPractica, 2);
+                ImGui::RadioButton("Skeet Shooting (Caida libre)", &modoPractica, 3);
+                ImGui::RadioButton("Detener Spawner", &modoPractica, 0);
+                
+                ImGui::Separator();
+                ImGui::Text("Tipo de Objetivo:");
+                ImGui::RadioButton("Esferas (1 HP / Temporales)", &tipoObjetivo, 0);
+                ImGui::RadioButton("Diana Humana (Permanente / Suelo)", &tipoObjetivo, 1);
+
+                ImGui::Separator();
+                ImGui::Checkbox("Municion Infinita", &municionInfinita);
+
+                ImGui::Dummy(ImVec2(0.0f, 10.0f));
+                if (ImGui::Button("Reiniciar Estadisticas y Arena", ImVec2(-1, 0))) {
+                    for (Bot* bot : botsActivos) delete bot;
+                    botsActivos.clear(); 
+                    botsDerribados = 0;
+                    botsGenerados = 0;
+                    tiempoLimite = TIEMPO_LIMITE;
+                }
+                ImGui::Separator();
+                ImGui::Text("Pulsa ESC o P para reanudar el combate");
                 ImGui::End();
             }
         }

@@ -11,24 +11,24 @@ private:
 
     // Fisicas de salto y gravedad
     float velocidadY = 0.0f;
-    float gravedad = -18.0f; // Un valor alto evita que el salto parezca que estas en la luna
+    float gravedad = -18.0f;
     float fuerzaSalto = 6.0f;
     bool enSuelo = true;
-    float alturaOjos = 1.0f; // La altura de la cámara respecto al suelo cero
+    float alturaOjos = 1.0f;
+
+    // Control de recuperacion de Recoil
+    float recoilAcumulado = 0.0f;
 
 public:
-    // Constructor
     Jugador(glm::vec3 posInicial, Arma* arma) 
-        : Entidad(posInicial, nullptr, 100.0f, 0.0f) // El jugador no se ve asi mismo
+        : Entidad(posInicial, nullptr, 100.0f, 0.0f) 
     {
         this->cam = Camera(posInicial);
         this->armaActiva = arma;
         this->alturaOjos = posInicial.y;
     }
 
-    // Actualizacion principal por frame
     void update(float deltaTime) {
-        // Guardamos la altura Y antes de que la camara se desplace
         float posYActual = cam.position.y; 
 
         if (!enSuelo) {
@@ -41,26 +41,31 @@ public:
                 enSuelo = true;
             }
         } else {
-            // Clava al jugador al suelo, impidiendo que vuele o traspase el piso
             posYActual = alturaOjos; 
         }
 
-        // Restaura la altura procesada y sincroniza la camara
         cam.position.y = posYActual; 
         this->posicion = cam.position;
+
+        // Recuperacion suave del Recoil usando el metodo publico de Camera
+        if (recoilAcumulado > 0.0f) {
+            float recup = 12.0f * deltaTime; // Velocidad de bajada
+            if (recup > recoilAcumulado) recup = recoilAcumulado;
+            
+            // Dividimos entre sensitivity para rotar los grados exactos y actualizar vectores
+            cam.processMouseMovement(0.0f, -recup / cam.sensitivity);
+            recoilAcumulado -= recup;
+        }
 
         if (armaActiva != nullptr) {
             armaActiva->desplazarModelo(cam, 0.0f);
         }
     }
 
-
-    // Delega el movimiento WASD a la camara
     void mover(bool w, bool s, bool a, bool d, bool shift, float deltaTime) {
         cam.processKeyboard(w, s, a, d, false, shift, deltaTime);
     }
 
-    // Delega el movimiento del raton
     void rotarVista(float xoffset, float yoffset) {
         cam.processMouseMovement(xoffset, yoffset);
     }
@@ -72,14 +77,14 @@ public:
         }
     }
 
-    Bala* disparar() {
+    Bala* disparar(bool municionInfinita = false) {
         if (armaActiva != nullptr) {
-            Bala* proyectil = armaActiva->disparar(cam.front);
+            Bala* proyectil = armaActiva->disparar(cam.front, municionInfinita);
             
             if (proyectil != nullptr) {
-                // Simulación de Recoil Procedural:
-                // Damos un pequeño tirón a la vista hacia arriba
+                // Aplicamos culatazo de 2.5f (que multiplica por 0.15f de sensitivity = 0.375 grados)
                 cam.processMouseMovement(0.0f, 2.5f); 
+                recoilAcumulado += 2.5f * cam.sensitivity;
             }
             return proyectil;
         }
@@ -92,9 +97,8 @@ public:
         }
     }
 
-    // getters y setters
     void sumarPuntos(int puntos) { puntajeActual += puntos; }
     int getPuntos() const { return puntajeActual; }
     Camera* getCamara() { return &cam; } 
-    Arma* getArma() { return armaActiva;}
+    Arma* getArma() { return armaActiva; }
 };

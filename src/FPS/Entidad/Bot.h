@@ -14,37 +14,70 @@ private:
     float distanciaRecorrida;
     float limiteDistancia; 
 
+    // Control de tiempo de vida (esferas)
+    bool tieneTiempoVida;
+    float tiempoVida;
+
+    // Física parabólica para Skeet Shooting
+    bool esParabolico = false;
+    glm::vec3 velParabolica = glm::vec3(0.0f);
+    float gravedadBot = -9.8f;
+
 public:
-    // El constructor ahora recibe si es dinamico y configura su velocidad
-    Bot(glm::vec3 pos, Mesh* modelo, float vida, int puntos, bool dinamico = false, float vel = 0.0f) 
+    Bot(glm::vec3 pos, Mesh* modelo, float vida, int puntos, bool dinamico = false, float vel = 0.0f, bool conTiempo = false, float tVida = 3.0f) 
         : Entidad(pos, modelo, vida, 0.0f) 
     {
         this->valorPuntos = puntos;
         this->esDinamico = dinamico;
         this->velocidad = vel;
-        this->direccionMovimiento = glm::vec3(1.0f, 0.0f, 0.0f); // Moverse de lado a lado en el eje X
+        this->direccionMovimiento = glm::vec3(1.0f, 0.0f, 0.0f); 
         
         this->distanciaRecorrida = 0.0f;
-        this->limiteDistancia = 5.0f; // Se moverá 5 metros antes de devolverse
+        this->limiteDistancia = 5.0f; 
+
+        this->tieneTiempoVida = conTiempo;
+        this->tiempoVida = tVida;
     }
 
-    // El bot actualiza su estado en cada frame del juego
+    void activarModoSkeet(glm::vec3 velocidadInicial) {
+        this->esParabolico = true;
+        this->velParabolica = velocidadInicial;
+    }
+
     void update(float deltaTime) {
         if (estaMuerto || modelo == nullptr) return;
         
-        // Solo desplazamos y recalculamos si el objetivo es móvil
-        if (esDinamico) {
+        if (tieneTiempoVida) {
+            tiempoVida -= deltaTime;
+            if (tiempoVida <= 0.0f) {
+                valorPuntos = 0; 
+                morir();
+                return;
+            }
+        }
+
+        if (esParabolico) {
+            velParabolica.y += gravedadBot * deltaTime;
+            posicion += velParabolica * deltaTime;
+            modelo->position = posicion;
+            actualizarHitBox();
+
+            // Si cae de vuelta bajo el suelo sin ser destruido, desaparece
+            if (posicion.y < -3.0f && velParabolica.y < 0.0f) {
+                valorPuntos = 0;
+                morir();
+            }
+        } else if (esDinamico) {
             float desplazamiento = velocidad * deltaTime;
             posicion += direccionMovimiento * desplazamiento;
             distanciaRecorrida += desplazamiento;
             
-            // Lógica de rebote: Si alcanza el límite, invierte su dirección
             if (distanciaRecorrida >= limiteDistancia || distanciaRecorrida <= -limiteDistancia) {
                 direccionMovimiento *= -1.0f; 
             }
 
             modelo->position = posicion;
-            actualizarHitBox(); // Mueve la caja de colisión junto con el modelo
+            actualizarHitBox(); 
         }
     }
 
@@ -59,5 +92,5 @@ public:
         return 0;
     }
 
-    Mesh* getModelo() {return modelo;}
+    Mesh* getModelo() { return modelo; }
 };

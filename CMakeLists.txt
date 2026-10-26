@@ -83,7 +83,7 @@ file(GLOB_RECURSE PROJECT_SOURCES
 # Crear el ejecutable
 add_executable(proyecto2
     ${PROJECT_SOURCES}
-    ${IMGUI_SOURCES}
+    ${IMGUI_SOURCES} 
 )    
   
 # Copia la carpeta assets exactamente al lado del ejecutable (.exe)
