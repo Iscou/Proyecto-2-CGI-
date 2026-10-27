@@ -270,6 +270,7 @@ private:
     Mesh mallaDianaBase;
     bool dianaCargada = false;
     GLuint texKeysNormalID = 0; // Para identificar que submalla usa el Normal Map en DirectX
+    GLuint texLapNorm = 0;
     glm::vec3 posLampara1 = glm::vec3(-5.0f, 10.1f, -16.0f);
     glm::vec3 posLampara2 = glm::vec3( 5.0f, 10.1f, -16.0f);
 
@@ -499,7 +500,7 @@ public:
 
                 Mesh desk1 = baseDesk;
                 desk1.id = contadorID++;
-                desk1.scale = glm::vec3(1.5f, 1.5f, 1.5f);
+                desk1.scale = glm::vec3(3.0f, 3.0f, 3.0f);
                 desk1.rotation = glm::vec3(0.0f, 0.0f, 0.0f);
                 desk1.position = glm::vec3(-6.0f, 0.0f, -15.5f);
                 asentarEnY(desk1, NIVEL_SUELO);
@@ -508,7 +509,7 @@ public:
 
                 Mesh desk2 = baseDesk;
                 desk2.id = contadorID++;
-                desk2.scale = glm::vec3(1.5f, 1.5f, 1.5f);
+                desk2.scale = glm::vec3(3.0f, 3.0f, 3.0f);
                 desk2.rotation = glm::vec3(0.0f, -90.0f, 0.0f);
                 desk2.position = glm::vec3(8.5f, 0.0f, -16.5f);
                 asentarEnY(desk2, NIVEL_SUELO);
@@ -538,7 +539,7 @@ public:
                 Mesh silla2 = baseSilla;
                 silla2.id = contadorID++;
                 silla2.scale = glm::vec3(1.3f, 1.3f, 1.3f);
-                silla2.rotation = glm::vec3(0.0f, -105.0f, 0.0f);
+                silla2.rotation = glm::vec3(0.0f, 75.0f, 0.0f);
                 silla2.position = glm::vec3(6.8f, 0.0f, -16.5f);
                 asentarEnY(silla2, NIVEL_SUELO);
                 escena.push_back(silla2);
@@ -546,11 +547,11 @@ public:
         }
 
         // Laptops (laptops.obj)
-        if (existeArchivo("assets/models/laptopss.obj")) {
+        if (existeArchivo("assets/models/laptops.obj")) {
             GLuint texLapColor  = cargarTextura("Laptop_Base_Color.png");
-            GLuint texLapNorm   = cargarTextura("Laptop_Normal_DirectX.png");
+            texLapNorm = cargarTextura("Laptop_Normal_DirectX.png");
             GLuint texKeysColor = cargarTextura("Keys_Base_Color.png");
-            texKeysNormalID     = cargarTextura("Keys_Normal_DirectX.png");
+            texKeysNormalID = cargarTextura("Keys_Normal_DirectX.png");
 
             Mesh baseLaptop = Mesh::crearOBJ(contadorID++, "assets/models/laptops.obj");
             if (!baseLaptop.subMeshes.empty()) {
@@ -572,7 +573,7 @@ public:
                 laptop1.id = contadorID++;
                 laptop1.scale = glm::vec3(0.8f, 0.8f, 0.8f);
                 laptop1.rotation = glm::vec3(0.0f, 180.0f, 0.0f);
-                laptop1.position = glm::vec3(-6.0f, 0.0f, -15.5f);
+                laptop1.position = glm::vec3(-6.7f, 0.0f, -15.5f);
                 asentarEnY(laptop1, topeDesk1);
                 escena.push_back(laptop1);
 
@@ -580,7 +581,7 @@ public:
                 laptop2.id = contadorID++;
                 laptop2.scale = glm::vec3(0.8f, 0.8f, 0.8f);
                 laptop2.rotation = glm::vec3(0.0f, 90.0f, 0.0f);
-                laptop2.position = glm::vec3(8.5f, 0.0f, -16.5f);
+                laptop2.position = glm::vec3(8.5f, 0.0f, -17.1f);
                 asentarEnY(laptop2, topeDesk2);
                 escena.push_back(laptop2);
             }
@@ -600,7 +601,7 @@ public:
 
                 Mesh caja1 = baseCaja;
                 caja1.id = contadorID++;
-                caja1.scale = glm::vec3(1.8f, 1.8f, 1.8f);
+                caja1.scale = glm::vec3(3.0f, 3.0f, 3.0f);
                 caja1.rotation = glm::vec3(0.0f, 12.0f, 0.0f);
                 caja1.position = glm::vec3(-9.5f, 0.0f, -21.0f);
                 asentarEnY(caja1, NIVEL_SUELO);
@@ -609,7 +610,7 @@ public:
 
                 Mesh caja2 = baseCaja;
                 caja2.id = contadorID++;
-                caja2.scale = glm::vec3(1.8f, 1.8f, 1.8f);
+                caja2.scale = glm::vec3(3.0f, 3.0f, 3.0f);
                 caja2.rotation = glm::vec3(0.0f, -5.0f, 0.0f);
                 caja2.position = glm::vec3(-6.8f, 0.0f, -21.5f);
                 asentarEnY(caja2, NIVEL_SUELO);
@@ -617,7 +618,7 @@ public:
 
                 Mesh caja3 = baseCaja;
                 caja3.id = contadorID++;
-                caja3.scale = glm::vec3(1.4f, 1.4f, 1.4f);
+                caja3.scale = glm::vec3(3.0f, 3.0f, 3.0f);
                 caja3.rotation = glm::vec3(0.0f, 35.0f, 0.0f);
                 caja3.position = glm::vec3(-9.3f, 0.0f, -21.0f);
                 asentarEnY(caja3, topeCaja1);
@@ -625,7 +626,7 @@ public:
 
                 Mesh caja4 = baseCaja;
                 caja4.id = contadorID++;
-                caja4.scale = glm::vec3(1.8f, 1.8f, 1.8f);
+                caja4.scale = glm::vec3(3.0f, 3.0f, 3.0f);
                 caja4.rotation = glm::vec3(0.0f, -20.0f, 0.0f);
                 caja4.position = glm::vec3(9.2f, 0.0f, -21.5f);
                 asentarEnY(caja4, NIVEL_SUELO);
@@ -1087,7 +1088,7 @@ public:
         auto dibujarMallaConFormatoNormal = [&](const Mesh& m) {
             bool usaDirectX = false;
             for (const SubMesh& sm : m.subMeshes) {
-                if (sm.tieneNormalMap && sm.texturaNormalID == texKeysNormalID) {
+                if (sm.tieneNormalMap && (sm.texturaNormalID == texKeysNormalID || sm.texturaNormalID == texLapNorm)) {
                     usaDirectX = true;
                     break;
                 }
