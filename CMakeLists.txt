@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(PROY2_32111550_31532714)
+project(PROY3_32111550_31532714)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -81,16 +81,16 @@ file(GLOB_RECURSE PROJECT_SOURCES
  
  
 # Crear el ejecutable
-add_executable(proyecto2
+add_executable(proyecto3
     ${PROJECT_SOURCES}
     ${IMGUI_SOURCES} 
 )    
   
 # Copia la carpeta assets exactamente al lado del ejecutable (.exe)
-add_custom_command(TARGET proyecto2 POST_BUILD
+add_custom_command(TARGET proyecto3 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_SOURCE_DIR}/assets"
-    "$<TARGET_FILE_DIR:proyecto2>/assets"
+    "$<TARGET_FILE_DIR:proyecto3>/assets"
 )
 
 # Descargar nlohmann/json automaticamente     
@@ -102,4 +102,4 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(json)
 
 # Enlazar librerias (ahora usamos 'glfw' que es el target que descarga FetchContent)
-target_link_libraries(proyecto2 glfw opengl32 nlohmann_json::nlohmann_json) 
+target_link_libraries(proyecto3 glfw opengl32 nlohmann_json::nlohmann_json) 

@@ -407,7 +407,7 @@ private:
     }
 
 public:
-    Proyecto2() : Engine3D(1280, 720, "Proyecto #2 - Renderizado y Manipulacion 3D") {}
+    Proyecto2() : Engine3D(1280, 720, "Proyecto #3 - Prototipo de Videojuego (Shooter)") {}
     ~Proyecto2() {
         delete miCielo;
         delete jugador;
