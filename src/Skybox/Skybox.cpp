@@ -74,7 +74,6 @@ void SkyBox::dibujar(glm::mat4 view, glm::mat4 projection) {
     glBindTexture(GL_TEXTURE_CUBE_MAP, idText);
     this->skybox.dibujar(idShaderP);
 
-    // Restauramos el estado exacto en el que estaba antes
     if (cullingActivo) glEnable(GL_CULL_FACE);
     
     glDepthFunc(GL_LESS);

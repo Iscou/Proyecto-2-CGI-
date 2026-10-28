@@ -47,12 +47,10 @@ public:
         cam.position.y = posYActual; 
         this->posicion = cam.position;
 
-        // Recuperacion suave del Recoil usando el metodo publico de Camera
         if (recoilAcumulado > 0.0f) {
-            float recup = 12.0f * deltaTime; // Velocidad de bajada
+            float recup = 12.0f * deltaTime;
             if (recup > recoilAcumulado) recup = recoilAcumulado;
             
-            // Dividimos entre sensitivity para rotar los grados exactos y actualizar vectores
             cam.processMouseMovement(0.0f, -recup / cam.sensitivity);
             recoilAcumulado -= recup;
         }
@@ -82,7 +80,6 @@ public:
             Bala* proyectil = armaActiva->disparar(cam.front, municionInfinita);
             
             if (proyectil != nullptr) {
-                // Aplicamos culatazo de 2.5f (que multiplica por 0.15f de sensitivity = 0.375 grados)
                 cam.processMouseMovement(0.0f, 2.5f); 
                 recoilAcumulado += 2.5f * cam.sensitivity;
             }

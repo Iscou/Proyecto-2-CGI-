@@ -5,20 +5,16 @@ class Bot : public Entidad {
 private:
     int valorPuntos;
     
-    // Variables para movimiento dinámico
     bool esDinamico;
     float velocidad;
     glm::vec3 direccionMovimiento;
     
-    // Cotas para el "Strafing" (ir y venir)
     float distanciaRecorrida;
     float limiteDistancia; 
 
-    // Control de tiempo de vida (esferas)
     bool tieneTiempoVida;
     float tiempoVida;
 
-    // Física parabólica para Skeet Shooting
     bool esParabolico = false;
     glm::vec3 velParabolica = glm::vec3(0.0f);
     float gravedadBot = -9.8f;
@@ -62,7 +58,6 @@ public:
             modelo->position = posicion;
             actualizarHitBox();
 
-            // Si cae de vuelta bajo el suelo sin ser destruido, desaparece
             if (posicion.y < -3.0f && velParabolica.y < 0.0f) {
                 valorPuntos = 0;
                 morir();

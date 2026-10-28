@@ -68,7 +68,7 @@ uniform bool hasTexture;
 uniform sampler2D ourTexture;
 uniform bool usarNormalMap;      
 uniform sampler2D texturaNormal; 
-uniform bool invertirNormalY; // true = DirectX (Y-), false = OpenGL (Y+)
+uniform bool invertirNormalY;
 uniform vec4 objectColor;
 
 uniform int modoIluminacion; 
@@ -100,7 +100,7 @@ void main() {
             norm = texture(texturaNormal, TexCoords).rgb;
             norm = normalize(norm * 2.0 - 1.0);
             if (invertirNormalY) {
-                norm.y = -norm.y; // Correccion para mapas en formato DirectX
+                norm.y = -norm.y;
             }
             norm = normalize(TBN * norm);
         } else {
@@ -247,20 +247,19 @@ private:
     bool cullFaceActivo = false;
     int modoSeleccion = 0; 
 
-    // --- Variables Shooter ---
+    // Variables Shooter
     bool modoJuego = false;
     bool juegoPausado = false;
     bool escPresionado = false;
     int modoPractica = 0; 
     
-    // Contadores de Precisión
     int botsDerribados = 0;
     int botsGenerados = 0;
     
     float spawnerTimer = 0.0f;
-    float tiempoAparicion = 0.6f; // Aparición rápida
+    float tiempoAparicion = 0.6f;
     
-    const float TIEMPO_LIMITE = 60.0f; // 1 Minuto exacto
+    const float TIEMPO_LIMITE = 60.0f;
     float tiempoLimite = TIEMPO_LIMITE;
     bool animacionVictoria = false;
     bool finSimulacion = false;
@@ -269,7 +268,7 @@ private:
     int tipoObjetivo = 0; 
     Mesh mallaDianaBase;
     bool dianaCargada = false;
-    GLuint texKeysNormalID = 0; // Para identificar que submalla usa el Normal Map en DirectX
+    GLuint texKeysNormalID = 0;
     GLuint texLapNorm = 0;
     glm::vec3 posLampara1 = glm::vec3(-5.0f, 10.1f, -16.0f);
     glm::vec3 posLampara2 = glm::vec3( 5.0f, 10.1f, -16.0f);
@@ -444,7 +443,6 @@ public:
         // Decoracion galeria y sala (Z < -9.5f) 
         const float NIVEL_SUELO = -0.5f;
 
-        // Funcion auxiliar segura: verifica que el Mesh tenga geometria antes de calcular su AABB
         auto asentarEnY = [](Mesh& m, float yObjetivo) {
             if (m.subMeshes.empty()) return;
             m.position.y = 0.0f;
@@ -587,7 +585,7 @@ public:
             }
         }
 
-        // 5. Cajas de madera (cajaMadera.obj + BoX.jpg)
+        // Cajas de madera (cajaMadera.obj + BoX.jpg)
         if (existeArchivo("assets/models/cajaMadera.obj")) {
             GLuint texCaja = cargarTextura("BoX.jpg");
             Mesh baseCaja = Mesh::crearOBJ(contadorID++, "assets/models/cajaMadera.obj");
@@ -649,7 +647,6 @@ public:
         }
         Bala* balaBase = new Bala(100.0f, 400.0f, modeloBala, 1.5f, 0.8f, 0.5f, 0.8f, 10.0f, 30.0f, 100.0f, glm::vec3(0), glm::vec3(0));
         
-        // Plantilla pre-cargada para la Diana (Target)
         mallaDianaBase = Mesh::crearOBJ(7777, "assets/models/target.obj");
         GLuint texDiana = cargarTextura("TARGETBASEUVV.png");
         for (SubMesh& sm : mallaDianaBase.subMeshes) {
@@ -775,7 +772,6 @@ public:
             } else { escPresionado = false; }
         }
 
-        // Guardamos la posición de la cámara antes de procesar cualquier movimiento
         glm::vec3 posicionAnterior = camera.position;
 
         if (modoJuego) {
@@ -793,15 +789,11 @@ public:
                     emitirParticulas = false; finSimulacion = false;
                     spawnerTimer += deltaTime;
                     
-                    // Límite de 10 objetivos activos simultáneamente
                     if (spawnerTimer >= tiempoAparicion && botsActivos.size() < 10) {
                         spawnerTimer = 0.0f;
                         
-                        // Rango X dentro de las paredes de la galería (-9.5 a +9.5)
                         float rx = (rand() % 1900 / 100.0f) - 9.5f; 
-                        // Rango Z en la galería trasera (entre Z = -4.0 y Z = 10.5, frente al muro de tiro en Z = -8.75)
                         float rz = -4.0f + (rand() % 1450 / 100.0f); 
-                        // Rango Y debajo del nuevo techo (10.2) y sobre el piso (-0.5)
                         float ry = (modoPractica == 3) ? 0.2f : (rand() % 550 / 100.0f) + 1.2f;   
                         glm::vec3 posAleatoria = glm::vec3(rx, ry, rz); 
 
@@ -815,14 +807,13 @@ public:
                             modeloBot->subMeshes[0].color = glm::vec4(1.0f, 0.0f, 0.0f, 1.0f); 
                             modeloBot->position = posAleatoria;
                             vidaObjetivo = 1.0f;
-                            usaTiempo = (modoPractica != 3); // En Skeet desaparece al caer al suelo
+                            usaTiempo = (modoPractica != 3);
                         } else {
                             modeloBot = new Mesh(mallaDianaBase);
                             modeloBot->id = contadorID++;
                             modeloBot->scale = glm::vec3(3.0f, 3.0f, 3.0f); 
                             
                             if (modoPractica != 3) {
-                                // Alineamos la base del dummy con la cara superior del piso de baldosas (Y = -0.5f)
                                 modeloBot->position = glm::vec3(rx, 0.0f, rz);
                                 AABB cajaInicial = modeloBot->obtenerAABBGlobal();
                                 float ajusteSuelo = -0.5f - cajaInicial.min.y;
@@ -833,7 +824,6 @@ public:
                             usaTiempo = false;
                         }
 
-                        // Orientar los objetivos hacia la posición de spawn del jugador (1.55, 1.0, -11.4)
                         glm::vec3 dirSpawn = glm::vec3(1.55f, 1.0f, -11.4f) - posAleatoria;
                         float anguloVista = glm::degrees(atan2(dirSpawn.x, dirSpawn.z));
                         modeloBot->rotation.y = anguloVista;
@@ -843,7 +833,6 @@ public:
 
                         Bot* nuevoBot = new Bot(posAleatoria, modeloBot, vidaObjetivo, 1, dinamico, vel, usaTiempo, tVida);
                         
-                        // Si es Skeet Shooting (3), lo lanzamos en parábola hacia arriba sin atravesar el techo (10.2)
                         if (modoPractica == 3) {
                             float velX = ((rand() % 600) / 100.0f) - 3.0f; 
                             float velY = 10.5f + ((rand() % 200) / 100.0f); 
@@ -905,12 +894,11 @@ public:
             );
         }
 
-        // Validación de colisiones AABB contra paredes, columnas, mesas y estructuras
         if (camera.position != posicionAnterior) {
             glm::vec3 posFutura = camera.position;
             glm::vec3 radioJugador(0.35f, 0.7f, 0.35f);
 
-            // Eje X (ignorando mallas que están a nivel del suelo como las losas de piso)
+            // Eje X
             camera.position = glm::vec3(posFutura.x, posicionAnterior.y, posicionAnterior.z);
             AABB cajaX = { camera.position - radioJugador, camera.position + radioJugador };
             for (const Mesh& m : escena) {
@@ -922,7 +910,7 @@ public:
             }
             posFutura.x = camera.position.x; 
 
-            // Eje Y (solo en modo libre, ya que en modoJuego Jugador.h controla la gravedad y el suelo)
+            // Eje Y
             camera.position = glm::vec3(posFutura.x, posFutura.y, posicionAnterior.z);
             if (!modoJuego) {
                 AABB cajaY = { camera.position - radioJugador, camera.position + radioJugador };
@@ -935,7 +923,7 @@ public:
             }
             posFutura.y = camera.position.y;
 
-            // Eje Z (ignorando mallas que están a nivel del suelo)
+            // Eje Z
             camera.position = glm::vec3(posFutura.x, posFutura.y, posFutura.z);
             AABB cajaZ = { camera.position - radioJugador, camera.position + radioJugador };
             for (const Mesh& m : escena) {
@@ -946,7 +934,6 @@ public:
                 }
             }
 
-            // Sincronizar la posición validada de vuelta al Jugador y actualizar el arma
             if (modoJuego && jugador != nullptr) {
                 jugador->getCamara()->position = camera.position;
                 if (jugador->getArma() != nullptr) {
@@ -1028,14 +1015,14 @@ public:
         glUniform1i(glGetUniformLocation(shaderProgram, "modoIluminacion"), modIluminacion);
         glUniform3fv(glGetUniformLocation(shaderProgram, "viewPos"), 1, glm::value_ptr(camera.position));
 
-        // Directional Light (El Sol)
+        // Luz direccional
         glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.direction"), -0.2f, -1.0f, -0.3f);
         glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.ambient"), 0.1f, 0.1f, 0.1f); 
         glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.diffuse"), 0.4f, 0.4f, 0.4f); 
         glUniform3f(glGetUniformLocation(shaderProgram, "dirLight.specular"), 0.5f, 0.5f, 0.5f); 
 
-        //  Point Light #1 (Bombillo en la Lámpara LED Izquierda: posLampara1)
-        glm::vec3 posBombillo1 = posLampara1 - glm::vec3(0.0f, 0.3f, 0.0f); // Un poquito debajo del modelo de la lámpara
+        // Point Light 1
+        glm::vec3 posBombillo1 = posLampara1 - glm::vec3(0.0f, 0.3f, 0.0f);
         glUniform3fv(glGetUniformLocation(shaderProgram, "pointLights[0].position"), 1, glm::value_ptr(posBombillo1));
         glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].ambient"), 0.08f, 0.08f, 0.08f);
         glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[0].diffuse"), 0.95f, 0.95f, 0.9f);
@@ -1044,7 +1031,7 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].linear"), 0.045f);
         glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[0].quadratic"), 0.0075f);
 
-        //  Point Light #2 (Bombillo en la Lámpara LED Derecha: posLampara2)
+        // Point Light 2
         glm::vec3 posBombillo2 = posLampara2 - glm::vec3(0.0f, 0.3f, 0.0f);
         glUniform3fv(glGetUniformLocation(shaderProgram, "pointLights[1].position"), 1, glm::value_ptr(posBombillo2));
         glUniform3f(glGetUniformLocation(shaderProgram, "pointLights[1].ambient"), 0.08f, 0.08f, 0.08f);
@@ -1054,7 +1041,7 @@ public:
         glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].linear"), 0.045f);
         glUniform1f(glGetUniformLocation(shaderProgram, "pointLights[1].quadratic"), 0.0075f);
 
-        // 4. Spot Light (Linterna acoplada a la cámara del jugador)
+        // Spot Light (linterna)
         glUniform3fv(glGetUniformLocation(shaderProgram, "spotLight.position"), 1, glm::value_ptr(camera.position));
         glUniform3fv(glGetUniformLocation(shaderProgram, "spotLight.direction"), 1, glm::value_ptr(camera.front));
         glUniform1f(glGetUniformLocation(shaderProgram, "spotLight.cutOff"), glm::cos(glm::radians(12.5f)));
@@ -1069,7 +1056,6 @@ public:
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(proj));
 
-        // Por defecto los Normal Maps están en formato OpenGL (invertirNormalY = false)
         glUniform1i(glGetUniformLocation(shaderProgram, "invertirNormalY"), false);
 
         if (modoJuego) {
@@ -1084,7 +1070,6 @@ public:
             }
         }
 
-        // Dibuja la escena activando invertirNormalY solo cuando la malla usa el Normal Map de las teclas en DirectX
         auto dibujarMallaConFormatoNormal = [&](const Mesh& m) {
             bool usaDirectX = false;
             for (const SubMesh& sm : m.subMeshes) {
@@ -1101,7 +1086,6 @@ public:
         for (const Mesh& m : escena) if (m.esTrasparente()) dibujarMallaConFormatoNormal(m);
         glUniform1i(glGetUniformLocation(shaderProgram, "invertirNormalY"), false);
 
-        // Se añade !modoJuego para que las líneas amarillas no se dibujen en el shooter
         if (!modoJuego && objSeleccionado >= 0 && objSeleccionado < escena.size()) {
             Mesh& m = escena[objSeleccionado];
             glDisable(GL_DEPTH_TEST);
@@ -1230,7 +1214,6 @@ public:
                         for (Bot* bot : botsActivos) delete bot;
                         botsActivos.clear();
                         
-                        // Victoria si logra al menos 50% de precisión al acabar el minuto
                         float precisionFinal = (botsGenerados > 0) ? ((float)botsDerribados / botsGenerados) : 0.0f;
                         emitirParticulas = true; 
                         finSimulacion = true; 

@@ -86,7 +86,6 @@ void Mesh::construirBBoxGPU() {
     glBindBuffer(GL_ARRAY_BUFFER, vboBBox);
     glBufferData(GL_ARRAY_BUFFER, datos.size() * sizeof(float), datos.data(), GL_STATIC_DRAW);
 
-    // Restaurados los * matemáticos que borró el Merge Conflict
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
     glEnableVertexAttribArray(0);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
@@ -121,7 +120,7 @@ void Mesh::limpiarGPU() {
 // Primitivas parametrizables
 Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, TexturaInfo ti, float lado, float alpha) {
     Mesh m(idObjeto, "Cubo_" + std::to_string(idObjeto));
-    float h = lado * 0.5f; // Operador restaurado
+    float h = lado * 0.5f;
 
     m.rutaDifusa = ti.rutaDifusa;
     m.rutaNormal = ti.rutaNormal;
@@ -140,7 +139,6 @@ Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, TexturaInfo ti, float lado, fl
     glm::vec2 uv11(m.anchoText / tileSize, m.altoText / tileSize); // Arriba Derecha
     glm::vec2 uv01(0.0f, m.altoText / tileSize); // Arriba Izquierda
 
-    // Arreglo unificado y limpio
     std::vector<Triangle> tris = {
         // Frente (z = h)
         Triangle(p[4], p[5], p[6], uv00, uv10, uv11), Triangle(p[4], p[6], p[7], uv00, uv11, uv01), 
@@ -160,12 +158,10 @@ Mesh Mesh::crearCubo(int idObjeto, int idSubMesh, TexturaInfo ti, float lado, fl
     if(ti.tieneTextura) colorBase = glm::vec4(1.0f, 1.0f, 1.0f, alpha);
     SubMesh sm(idSubMesh, tris, colorBase);
 
-    // Integración de Textura Difusa
     sm.hasTexture = ti.tieneTextura;
     if(ti.tieneTextura) {
         sm.texturaDifusaID = cargarTextura(ti.rutaDifusa);
     }
-    // Integración de Normal Map
     sm.tieneNormalMap = ti.tieneNormalMap;
     if(ti.tieneNormalMap) {
         sm.texturaNormalID = cargarTextura(ti.rutaNormal);
@@ -237,7 +233,7 @@ Mesh Mesh::crearEsfera(int idObjeto, int idSubMesh, float radio, int sectores, i
     auto getPunto = [&](int i, int j, glm::vec2& uv) {
         float u_ratio = (float)j / sectores;
         float v_ratio = (float)i / stacks;
-        float u_ang = u_ratio * 2.0f * PI; // Operadores matemáticos restaurados
+        float u_ang = u_ratio * 2.0f * PI;
         float v_ang = v_ratio * PI - (PI * 0.5f);
         
         uv = glm::vec2(u_ratio, v_ratio);
@@ -271,7 +267,7 @@ Mesh Mesh::crearCilindro (int idObjeto, int idSubMesh, float radio, float altura
     std::vector<Triangle> tris;
     const float PI = 3.14159265359f;
     
-    float yMin = -altura * 0.5f; // Operadores restaurados
+    float yMin = -altura * 0.5f;
     float yMax = altura * 0.5f; 
 
     glm::vec3 centroArriba(0.0f, yMax, 0.0f);
@@ -344,7 +340,6 @@ AABB Mesh::obtenerAABBGlobal() const {
         // Proyectamos el véetice al mundo real
         glm::vec4 posMundo = matrizModel * glm::vec4(vertices[i], 1.0f);
 
-        // Actualizamos los límites absolutos en X, Y, Z
         globalMin.x = std::min(globalMin.x, posMundo.x);
         globalMin.y = std::min(globalMin.y, posMundo.y);
         globalMin.z = std::min(globalMin.z, posMundo.z);

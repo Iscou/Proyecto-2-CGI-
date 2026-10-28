@@ -7,12 +7,12 @@ public:
     glm::vec3 v1, v2, v3;
     // Vectores normales de cada vértice (nx, ny, nz)
     glm::vec3 vn1, vn2, vn3;
-    // Vectores de textura (u, v) (Implementación de tu compañero)
+    // Vectores de textura (u, v)
     glm::vec2 vt1, vt2, vt3;
 
-    // Tangente (Nuestra implementación)
+    // Tangente
     glm::vec3 tan1{0.0f, 0.0f, 0.0f}, tan2{0.0f, 0.0f, 0.0f}, tan3{0.0f, 0.0f, 0.0f};
-    // Bitangente (Nuestra implementación)
+    // Bitangente
     glm::vec3 bitan1{0.0f, 0.0f, 0.0f}, bitan2{0.0f, 0.0f, 0.0f}, bitan3{0.0f, 0.0f, 0.0f};
 
     // Constructores 

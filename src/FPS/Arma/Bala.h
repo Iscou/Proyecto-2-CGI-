@@ -33,7 +33,6 @@ private:
     AABB hitBox;
 
 public:
-    // Constructor implementado
     Bala(const Bala& otro)
         : dmg(otro.dmg), velocidad(otro.velocidad),
         multiCabeza(otro.multiCabeza), multiPierna(otro.multiPierna),
@@ -64,7 +63,7 @@ public:
         this->mediaDist = mediaDist;
         this->largaDist = largaDist;
         this->pos = pos;
-        this->dir = glm::normalize(dir); // Aseguramos que el vector dirección esté normalizado
+        this->dir = glm::normalize(dir);
         this->distanciaRecorrida = 0.0f;
         
         if (this->modelo != nullptr) {
@@ -101,7 +100,6 @@ public:
         // Actualizar AABB
         hitBox = modelo->obtenerAABBGlobal();
 
-        // Eliminar si supera la distancia máxima permitida para no consumir memoria
         if (distanciaRecorrida >= largaDist) { 
             modelo->borrame = true; 
         }
@@ -112,7 +110,7 @@ public:
         if (objetivo == nullptr || modelo == nullptr || modelo->borrame) return;
 
         // Evaluar multiplicador por distancia
-        float multiplicadorDistancia = 1.0f; // Corta distancia (base) por defecto
+        float multiplicadorDistancia = 1.0f;
         
         if (distanciaRecorrida > mediaDist) {
             multiplicadorDistancia = multiLarga;
@@ -121,7 +119,7 @@ public:
         }
 
         // Evaluar multiplicador por zona de impacto
-        float multiplicadorCuerpo = 1.0f; // Pecho 'c' (base) por defecto
+        float multiplicadorCuerpo = 1.0f;
         
         if (parteCuerpo == 'h') {
             multiplicadorCuerpo = multiCabeza;
@@ -129,11 +127,9 @@ public:
             multiplicadorCuerpo = multiPierna;
         }
 
-        // Calcular daño total y aplicarlo
         float danoFinal = dmg * multiplicadorDistancia * multiplicadorCuerpo;
         objetivo->recibirDMG(danoFinal);
 
-        // La bala se destruye al impactar contra la entidad
         modelo->borrame = true;
     }
 

@@ -12,7 +12,6 @@ struct Particle {
     float Size;
 };
 
-// Estructura para controlar los parámetros en tiempo real
 struct ParticleConfig {
     float startSize = 0.2f;
     float endSize = 0.1f;

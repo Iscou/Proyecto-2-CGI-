@@ -11,7 +11,6 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.4
 )
-# Desactivamos extras de GLFW para que compile super rapido
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -86,7 +85,7 @@ add_executable(proyecto3
     ${IMGUI_SOURCES} 
 )    
   
-# Copia la carpeta assets exactamente al lado del ejecutable (.exe)
+# Copia la carpeta assets al lado del ejecutable
 add_custom_command(TARGET proyecto3 POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_SOURCE_DIR}/assets"
@@ -101,5 +100,5 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-# Enlazar librerias (ahora usamos 'glfw' que es el target que descarga FetchContent)
+# Enlazar librerias
 target_link_libraries(proyecto3 glfw opengl32 nlohmann_json::nlohmann_json) 

@@ -70,13 +70,12 @@ void SubMesh::subirAGPU() {
 
         // Empaqueta los 3 vertices del triangulo (Posicion + UV + Normal + Tangente + Bitangente) 
         glm::vec3 verts[3] = { t.v1, t.v2, t.v3 };
-        glm::vec2 uvs[3]   = { t.vt1, t.vt2, t.vt3 }; // Adaptado a la variable de tu compañero
+        glm::vec2 uvs[3]   = { t.vt1, t.vt2, t.vt3 };
         glm::vec3 norms[3] = { n1, n2, n3 };
         glm::vec3 tans[3]  = { t.tan1, t.tan2, t.tan3 };
         glm::vec3 bitans[3]= { t.bitan1, t.bitan2, t.bitan3 };
 
         for (int i = 0; i < 3; ++i) {
-            // Empaquetamos los 14 floats en estricto orden vertical
             datosTriangulos.push_back(verts[i].x);
             datosTriangulos.push_back(verts[i].y);
             datosTriangulos.push_back(verts[i].z);
@@ -127,7 +126,6 @@ void SubMesh::subirAGPU() {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, datosTriangulos.size() * sizeof(float), datosTriangulos.data(), GL_STATIC_DRAW);
 
-    // Unico Stride válido: 14 floats
     GLsizei stride = 14 * sizeof(float); 
     
     // Posición (Loc=0, 3 floats)
@@ -176,23 +174,20 @@ void SubMesh::dibujar(GLuint shaderProgram, const glm::mat4& matrizPadre,
                       bool verWireframe, bool verVertices, bool verNormales) const {
     if (vao == 0 || totalVertices == 0) return;
 
-    // Evaluar si la submalla posee transparencia
     bool transparente = (color.a < 1.0f);
 
     if (transparente) {
         glEnable(GL_BLEND);
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glDepthMask(GL_FALSE); // Evita que la malla transparente bloquee lo que está detrás
+        glDepthMask(GL_FALSE);
     }
 
     // La transformacion del Objeto Padre afecta a esta SubMalla: M_final = M_padre * M_local
     glm::mat4 modelFinal = matrizPadre * getMatrizLocal();
     glUniformMatrix4fv(glGetUniformLocation(shaderProgram, "model"), 1, GL_FALSE, glm::value_ptr(modelFinal));
     
-    // El color fallback en caso de que la textura falle
     glUniform4fv(glGetUniformLocation(shaderProgram, "objectColor"), 1, glm::value_ptr(color));
 
-    // Textura Difusa (
     glUniform1i(glGetUniformLocation(shaderProgram, "hasTexture"), hasTexture ? 1 : 0);
     if (hasTexture) {
         glActiveTexture(GL_TEXTURE0);
@@ -200,7 +195,7 @@ void SubMesh::dibujar(GLuint shaderProgram, const glm::mat4& matrizPadre,
         glUniform1i(glGetUniformLocation(shaderProgram, "ourTexture"), 0);
     }
 
-    // Textura Normal Map (La tuya)
+    // Textura Normal Map
     glUniform1i(glGetUniformLocation(shaderProgram, "usarNormalMap"), tieneNormalMap ? 1 : 0);
     if (tieneNormalMap) {
         glActiveTexture(GL_TEXTURE1);
@@ -235,8 +230,8 @@ void SubMesh::dibujar(GLuint shaderProgram, const glm::mat4& matrizPadre,
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
     if (transparente) {
-        glDepthMask(GL_TRUE); // Reactivar la escritura normal en el Z-Buffer
-        glDisable(GL_BLEND);  // Desactivar blending para las mallas posteriores que sean opacas
+        glDepthMask(GL_TRUE);
+        glDisable(GL_BLEND);
     }
 
 }

@@ -9,10 +9,10 @@ in vec3 Normal;
 out vec4 FragColor;
 
 //Propiedades del objeto y la luz
-uniform vec4 objectColor;  //Vector 4 para soportar el color difuso (kd) y el canal alfa
+uniform vec4 objectColor;
 uniform vec3 lightDir;     //Dir de la luz
 uniform vec3 lightColor;   //Color de la luz
-uniform vec3 ambientLight; //Luz ambiental base para que las sombras no sean totalmente negras
+uniform vec3 ambientLight;
 
 void main() {
     //Iluminacion Ambiental
@@ -27,6 +27,5 @@ void main() {
     //Resultado
     vec3 result = ambient + diffuse;
     
-    //Se asigna el color resultante y se preserva el canal alfa original
     FragColor = vec4(result, objectColor.a);
 }

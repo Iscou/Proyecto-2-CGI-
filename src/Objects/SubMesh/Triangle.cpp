@@ -44,7 +44,6 @@ Triangle::Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3,
     this->vn2 = vn2;
     this->vn3 = vn3;
     
-    // Inicializamos en 0 lo demás para evitar basura en memoria
     this->vt1 = glm::vec2(0.0f);
     this->vt2 = glm::vec2(0.0f);
     this->vt3 = glm::vec2(0.0f);
@@ -86,7 +85,6 @@ void Triangle::calcularTangentesBitangentes() {
     tangent = glm::normalize(tangent);
     bitangent = glm::normalize(bitangent);
 
-    // Como la cara de este triángulo es plana, los 3 vértices comparten la misma Tangente y Bitangente
     tan1 = tan2 = tan3 = tangent;
     bitan1 = bitan2 = bitan3 = bitangent;
 }

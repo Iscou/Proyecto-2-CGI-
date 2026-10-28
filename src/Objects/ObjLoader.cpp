@@ -116,7 +116,6 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
         std::vector<Triangle> tris;
         size_t index_offset = 0;
 
-        // Color por defecto si la sub-malla no tiene material asignado o el .mtl no existe
         glm::vec4 colorSubMesh(0.7f, 0.7f, 0.7f, 1.0f);
 
         // Obtener el Kd del material asignado a la primera cara del shape
@@ -125,7 +124,6 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
             if (matId >= 0 && matId < static_cast<int>(materials.size())) {
                 const auto& mat = materials[matId];
 
-                // mat.diffuse es un float[3] con componentes (r, g, b)
                 colorSubMesh = glm::vec4(mat.diffuse[0], mat.diffuse[1], mat.diffuse[2], 1.0f);
             }
         }
@@ -178,14 +176,13 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
                     }
                 
 
-                    glm::vec4 colorSubMesh(0.7f, 0.7f, 0.7f, 1.0f); // gris y 100% opaco
+                    glm::vec4 colorSubMesh(0.7f, 0.7f, 0.7f, 1.0f);
 
                     if (!shape.mesh.material_ids.empty()) {
                         int matId = shape.mesh.material_ids[0];
                         if (matId >= 0 && matId < static_cast<int>(materials.size())) {
                             const auto& mat = materials[matId];
 
-                            // Asignamos R, G, B desde el Kd y el Alpha desde mat.dissolve (d)
                             colorSubMesh = glm::vec4(
                                 mat.diffuse[0],
                                 mat.diffuse[1],
@@ -197,7 +194,6 @@ Mesh ObjLoader::cargarOBJ(int idObjeto, const std::string& rutaArchivo) {
 
                 }
 
-                // Crear el triángulo
                 tris.push_back(Triangle(pos[0], pos[1], pos[2], uv[0], uv[1], uv[2], norm[0], norm[1], norm[2]));
             }
 
